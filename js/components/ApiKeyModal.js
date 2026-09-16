@@ -1,64 +1,87 @@
 /**
  * LexiGuard AI - Gemini API Key Setup Modal
+ * @module ApiKeyModal
  */
 
 import { aiService } from '../services/aiEngine.js';
+import { escapeHtml, showToast } from '../utils.js';
 
 export function createApiKeyModal({ onClose, onKeyUpdated }) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'api-modal-title');
 
   const currentKey = aiService.apiKey || '';
 
   modal.innerHTML = `
     <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title">
-          <i data-lucide="key" style="width:22px; height:22px; color:var(--accent-primary);"></i>
+        <div class="modal-title" id="api-modal-title">
+          <i data-lucide="key" style="width:22px; height:22px; color:var(--accent-primary);" aria-hidden="true"></i>
           <span>Configure Gemini AI API Key</span>
         </div>
-        <button id="modal-key-close" class="close-btn">&times;</button>
+        <button id="modal-key-close" type="button" class="close-btn" aria-label="Close API Key dialog">&times;</button>
       </div>
 
-      <div style="font-size:0.88rem; color:var(--text-secondary); line-height:1.5;">
-        By default, LexiGuard AI runs using a high-speed built-in zero-latency NLP extraction engine. Optionally enter your <strong>Google Gemini API Key</strong> to activate live LLM model processing.
+      <div style="font-size:0.88rem; color:var(--text-secondary); line-height:1.6;">
+        LexiGuard AI includes a high-speed built-in zero-latency local NLP engine. Optionally provide your personal <strong>Google Gemini API Key</strong> to activate live LLM model inference.
       </div>
 
       <div>
-        <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:0.4rem;">Google Gemini API Key</label>
-        <input id="inp-api-key" type="password" class="chat-input" style="width:100%;" value="${currentKey}" placeholder="AIzaSy..." />
+        <label for="inp-api-key" style="font-size:0.8rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:0.4rem;">Google Gemini API Key</label>
+        <input id="inp-api-key" type="password" class="chat-input" style="width:100%;" value="${escapeHtml(currentKey)}" placeholder="AIzaSy..." autocomplete="off" />
       </div>
 
       <div style="font-size:0.75rem; color:var(--text-muted);">
-        <i data-lucide="lock" style="width:12px; height:12px; display:inline;"></i> Keys are stored in session memory only and are never transmitted to third parties.
+        <i data-lucide="lock" style="width:12px; height:12px; display:inline;" aria-hidden="true"></i> Keys are stored in local session memory only and are never transmitted to third parties.
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
-        <button id="btn-clear-key" class="btn btn-secondary btn-sm">Clear Key (Use Default)</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+        <button id="btn-clear-key" type="button" class="btn btn-secondary btn-sm">Clear Key (Use Default)</button>
         <div style="display:flex; gap:0.5rem;">
-          <button id="btn-save-key" class="btn btn-primary">Save Key</button>
+          <button id="btn-save-key" type="button" class="btn btn-primary">Save Key</button>
         </div>
       </div>
     </div>
   `;
 
   if (window.lucide) {
-    window.lucide.createIcons();
+    window.lucide.createIcons({ root: modal });
   }
 
-  modal.querySelector('#modal-key-close').addEventListener('click', onClose);
+  const handleClose = () => {
+    document.removeEventListener('keydown', handleKeyDown);
+    onClose();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      handleClose();
+    }
+  };
+
+  document.addEventListener('keydown', handleKeyDown);
+
+  modal.querySelector('#modal-key-close')?.addEventListener('click', handleClose);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) handleClose();
+  });
   
-  modal.querySelector('#btn-save-key').addEventListener('click', () => {
-    const val = modal.querySelector('#inp-api-key').value.trim();
+  modal.querySelector('#btn-save-key')?.addEventListener('click', () => {
+    const val = (modal.querySelector('#inp-api-key')?.value || '').trim();
     aiService.setApiKey(val);
     onKeyUpdated();
-    onClose();
+    showToast(val ? 'Gemini API Key activated!' : 'Using default local NLP engine', 'success', 2500);
+    handleClose();
   });
 
-  modal.querySelector('#btn-clear-key').addEventListener('click', () => {
+  modal.querySelector('#btn-clear-key')?.addEventListener('click', () => {
     aiService.setApiKey('');
     onKeyUpdated();
-    onClose();
+    showToast('API Key cleared. Switched to local NLP engine.', 'info', 2500);
+    handleClose();
   });
 
   return modal;

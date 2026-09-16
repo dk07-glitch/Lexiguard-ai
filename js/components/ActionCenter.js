@@ -1,11 +1,15 @@
 /**
  * LexiGuard AI - Action Center & Practical Next Steps Suite
+ * @module ActionCenter
  */
 
 import { aiService } from '../services/aiEngine.js';
 import { exporter } from '../services/exporter.js';
+import { escapeHtml, showToast } from '../utils.js';
 
 export function renderActionCenter(container, documentTitle, analysis) {
+  if (!container) return;
+
   let activeTab = 'timeline';
   let generatedLetter = '';
 
@@ -13,102 +17,110 @@ export function renderActionCenter(container, documentTitle, analysis) {
     container.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:1.25rem;">
         <!-- Header Controls & Tool Tabs -->
-        <div class="glass-panel" style="padding:1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+        <div class="glass-panel" style="padding:1.35rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
           <div>
-            <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.5rem;">
-              <i data-lucide="compass" style="width:22px; height:22px; color:var(--accent-primary);"></i>
+            <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="compass" style="width:22px; height:22px; color:var(--accent-primary);" aria-hidden="true"></i>
               Practical Next Steps & Action Tools
             </h3>
-            <p style="font-size:0.85rem; color:var(--text-secondary);">
-              Transform document analysis into actionable outcomes: deadlines, formal dispute letters, and lawyer prep packs.
+            <p style="font-size:0.86rem; color:var(--text-secondary);">
+              Transform contract analysis into actionable outcomes: deadlines, formal dispute letters, and lawyer prep packs.
             </p>
           </div>
 
-          <div style="display:flex; gap:0.5rem;">
-            <button id="btn-export-lawyer" class="btn btn-primary">
-              <i data-lucide="download" style="width:16px; height:16px;"></i>
-              <span>Export Lawyer Consult Pack</span>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button id="btn-print-lawyer" type="button" class="btn btn-secondary btn-sm" title="Print or save as PDF">
+              <i data-lucide="printer" style="width:14px; height:14px;" aria-hidden="true"></i>
+              <span>Print Briefing</span>
+            </button>
+            <button id="btn-export-lawyer" type="button" class="btn btn-primary btn-sm" title="Download text consultation pack">
+              <i data-lucide="download" style="width:14px; height:14px;" aria-hidden="true"></i>
+              <span>Download Lawyer Pack</span>
             </button>
           </div>
         </div>
 
-        <!-- Action Sub-Tabs -->
-        <div class="nav-tabs" style="margin-bottom:0;">
-          <button class="tab-btn ${activeTab === 'timeline' ? 'active' : ''}" data-act-tab="timeline">
-            <i data-lucide="calendar" style="width:16px; height:16px;"></i>
+        <!-- Action Sub-Tabs Navigation -->
+        <div class="nav-tabs" style="margin-bottom:0;" role="tablist" aria-label="Action Center Modules">
+          <button type="button" class="tab-btn ${activeTab === 'timeline' ? 'active' : ''}" data-act-tab="timeline">
+            <i data-lucide="calendar" style="width:15px; height:15px;" aria-hidden="true"></i>
             <span>Obligations Timeline</span>
           </button>
-          <button class="tab-btn ${activeTab === 'letter' ? 'active' : ''}" data-act-tab="letter">
-            <i data-lucide="file-signature" style="width:16px; height:16px;"></i>
+          <button type="button" class="tab-btn ${activeTab === 'letter' ? 'active' : ''}" data-act-tab="letter">
+            <i data-lucide="file-signature" style="width:15px; height:15px;" aria-hidden="true"></i>
             <span>Formal Letter Generator</span>
           </button>
-          <button class="tab-btn ${activeTab === 'negotiation' ? 'active' : ''}" data-act-tab="negotiation">
-            <i data-lucide="handshake" style="width:16px; height:16px;"></i>
+          <button type="button" class="tab-btn ${activeTab === 'negotiation' ? 'active' : ''}" data-act-tab="negotiation">
+            <i data-lucide="handshake" style="width:15px; height:15px;" aria-hidden="true"></i>
             <span>Negotiation Counter-Script</span>
           </button>
         </div>
 
-        <!-- Sub-Tab Content -->
+        <!-- Sub-Tab Content View -->
         <div class="glass-panel" style="padding:1.5rem;">
-          ${activeTab === 'timeline' ? renderTimelineView(analysis.timeline || []) : ''}
+          ${activeTab === 'timeline' ? renderTimelineView(analysis?.timeline || []) : ''}
           ${activeTab === 'letter' ? renderLetterGeneratorView() : ''}
-          ${activeTab === 'negotiation' ? renderNegotiationScriptView(analysis.clauses || []) : ''}
+          ${activeTab === 'negotiation' ? renderNegotiationScriptView(analysis?.clauses || []) : ''}
         </div>
       </div>
     `;
 
     if (window.lucide) {
-      window.lucide.createIcons();
+      window.lucide.createIcons({ root: container });
     }
 
-    // Bind Sub-Tab Navigation
-    container.querySelectorAll('[data-act-tab]').forEach(btn => {
+    // Sub-Tab Switcher
+    container.querySelectorAll('[data-act-tab]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         activeTab = e.currentTarget.getAttribute('data-act-tab');
         updateView();
       });
     });
 
-    // Bind Lawyer Consult Export Button
-    const exportBtn = container.querySelector('#btn-export-lawyer');
-    if (exportBtn) {
-      exportBtn.addEventListener('click', () => {
-        const packContent = exporter.generateLawyerConsultPack(documentTitle, analysis);
-        exporter.downloadFile('Lawyer_Consultation_Prep_Pack.txt', packContent);
-      });
-    }
+    // Lawyer Pack Download Action
+    container.querySelector('#btn-export-lawyer')?.addEventListener('click', () => {
+      const packContent = exporter.generateLawyerConsultPack(documentTitle, analysis);
+      exporter.downloadFile('Lawyer_Consultation_Prep_Pack.txt', packContent);
+      showToast('Lawyer Consultation Pack downloaded!', 'success', 3000);
+    });
 
-    // Bind Letter Generator Actions if in letter view
+    // Lawyer Pack Print Action
+    container.querySelector('#btn-print-lawyer')?.addEventListener('click', () => {
+      exporter.printConsultPack(documentTitle, analysis);
+    });
+
+    // Letter Generator Actions
     if (activeTab === 'letter') {
       const generateBtn = container.querySelector('#btn-generate-letter');
-      if (generateBtn) {
-        generateBtn.addEventListener('click', () => {
-          const type = container.querySelector('#letter-type-select').value;
-          const details = {
-            landlordName: container.querySelector('#inp-landlord')?.value,
-            propertyAddress: container.querySelector('#inp-address')?.value,
-            amount: container.querySelector('#inp-amount')?.value,
-            vacateDate: container.querySelector('#inp-date')?.value,
-            forwardingAddress: container.querySelector('#inp-forwarding')?.value,
-            tenantName: container.querySelector('#inp-tenant')?.value
-          };
+      generateBtn?.addEventListener('click', () => {
+        const type = container.querySelector('#letter-type-select')?.value || 'lease_deposit';
+        const details = {
+          landlordName: container.querySelector('#inp-landlord')?.value,
+          propertyAddress: container.querySelector('#inp-address')?.value,
+          amount: container.querySelector('#inp-amount')?.value,
+          vacateDate: container.querySelector('#inp-date')?.value,
+          forwardingAddress: container.querySelector('#inp-forwarding')?.value,
+          tenantName: container.querySelector('#inp-tenant')?.value
+        };
 
-          generatedLetter = aiService.generateDisputeLetter(type, details);
-          const outputBox = container.querySelector('#letter-output-box');
-          if (outputBox) outputBox.value = generatedLetter;
-        });
-      }
+        generatedLetter = aiService.generateDisputeLetter(type, details);
+        const outputBox = container.querySelector('#letter-output-box');
+        if (outputBox) {
+          outputBox.value = generatedLetter;
+        }
+        showToast('Formal letter generated successfully!', 'success', 2500);
+      });
 
       const copyBtn = container.querySelector('#btn-copy-letter');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-          const text = container.querySelector('#letter-output-box')?.value;
-          if (text) {
-            navigator.clipboard.writeText(text);
-            alert("Letter copied to clipboard!");
-          }
-        });
-      }
+      copyBtn?.addEventListener('click', () => {
+        const text = container.querySelector('#letter-output-box')?.value;
+        if (text) {
+          navigator.clipboard.writeText(text);
+          showToast('Letter copied to clipboard!', 'success', 2500);
+        } else {
+          showToast('Generate a letter first to copy.', 'warning', 2500);
+        }
+      });
     }
   }
 
@@ -117,25 +129,27 @@ export function renderActionCenter(container, documentTitle, analysis) {
 
 function renderTimelineView(timelineItems) {
   return `
-    <h4 style="font-size:1rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
-      <i data-lucide="clock" style="width:18px; height:18px; color:var(--accent-secondary);"></i>
-      Key Dates, Notice Deadlines & Financial Commitments
+    <h4 style="font-size:1.05rem; font-weight:800; margin-bottom:1.1rem; display:flex; align-items:center; gap:0.5rem;">
+      <i data-lucide="clock" style="width:18px; height:18px; color:var(--accent-secondary);" aria-hidden="true"></i>
+      Key Dates, Notice Deadlines & Financial Milestones
     </h4>
 
-    <div style="display:flex; flex-direction:column; gap:0.85rem;">
-      ${timelineItems.map(item => `
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:0.85rem 1.1rem; border-radius:var(--radius-sm); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <div style="width:36px; height:36px; border-radius:50%; background:var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}-bg); border:1px solid var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}-border); display:flex; align-items:center; justify-content:center; color:var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}); font-weight:700;">
-              <i data-lucide="${item.type === 'deadline' ? 'alert-triangle' : (item.type === 'payment' ? 'credit-card' : 'calendar')}" style="width:16px; height:16px;"></i>
+    <div style="display:flex; flex-direction:column; gap:0.85rem;" role="list">
+      ${timelineItems.length === 0 ? `
+        <div style="color:var(--text-muted); font-size:0.88rem;">No timeline events detected.</div>
+      ` : timelineItems.map((item) => `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.15rem; border-radius:var(--radius-sm); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);" role="listitem">
+          <div style="display:flex; align-items:center; gap:0.85rem;">
+            <div style="width:38px; height:38px; border-radius:50%; background:var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}-bg); border:1px solid var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}-border); display:flex; align-items:center; justify-content:center; color:var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}); font-weight:700;">
+              <i data-lucide="${item.type === 'deadline' ? 'alert-triangle' : (item.type === 'payment' ? 'credit-card' : 'calendar')}" style="width:16px; height:16px;" aria-hidden="true"></i>
             </div>
             <div>
-              <div style="font-weight:700; font-size:0.92rem;">${item.title}</div>
-              <div style="font-size:0.8rem; color:var(--text-muted);">Action required on schedule</div>
+              <div style="font-weight:700; font-size:0.92rem;">${escapeHtml(item.title)}</div>
+              <div style="font-size:0.78rem; color:var(--text-muted);">Action required on schedule</div>
             </div>
           </div>
           <span class="risk-badge badge-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'medium' : 'low')}">
-            ${item.date}
+            ${escapeHtml(item.date)}
           </span>
         </div>
       `).join('')}
@@ -148,54 +162,54 @@ function renderLetterGeneratorView() {
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
       <!-- Inputs Form -->
       <div style="display:flex; flex-direction:column; gap:1rem;">
-        <h4 style="font-size:1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
-          <i data-lucide="edit-3" style="width:18px; height:18px; color:var(--accent-primary);"></i>
-          Customize Formal Letter Details
+        <h4 style="font-size:1.05rem; font-weight:800; display:flex; align-items:center; gap:0.5rem;">
+          <i data-lucide="edit-3" style="width:18px; height:18px; color:var(--accent-primary);" aria-hidden="true"></i>
+          Customize Formal Notice Parameters
         </h4>
 
         <div>
-          <label style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.3rem;">Select Letter Type</label>
-          <select id="letter-type-select" class="chat-input" style="width:100%;">
-            <option value="lease_deposit">Security Deposit Demand Letter (Lease Dispute)</option>
-            <option value="non_compete_waiver">Non-Compete Waiver Request (Employment)</option>
-            <option value="contract_mod">General Contract Amendment Request</option>
+          <label style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.35rem;">Select Letter Template</label>
+          <select id="letter-type-select" class="chat-input" style="width:100%;" aria-label="Select letter type">
+            <option value="lease_deposit">Security Deposit Demand Notice (Tenant Dispute)</option>
+            <option value="non_compete_waiver">Non-Compete Waiver Request (Employee Departure)</option>
+            <option value="contract_mod">General Contract Revision Proposal</option>
           </select>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted);">Recipient Name / Entity</label>
+            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Recipient / Entity</label>
             <input id="inp-landlord" type="text" class="chat-input" style="width:100%;" placeholder="Apex Properties LLC" />
           </div>
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted);">Your Name</label>
+            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Your Full Name</label>
             <input id="inp-tenant" type="text" class="chat-input" style="width:100%;" placeholder="John Doe" />
           </div>
         </div>
 
         <div>
-          <label style="font-size:0.75rem; color:var(--text-muted);">Property Address / Contract Ref</label>
+          <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Address / Contract Ref</label>
           <input id="inp-address" type="text" class="chat-input" style="width:100%;" placeholder="452 Skyline Blvd, Apt 4B" />
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted);">Deposit / Claim Amount</label>
+            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Disputed / Claim Amount</label>
             <input id="inp-amount" type="text" class="chat-input" style="width:100%;" placeholder="$3,400.00" />
           </div>
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted);">Vacate / Effective Date</label>
+            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Effective / Vacate Date</label>
             <input id="inp-date" type="text" class="chat-input" style="width:100%;" placeholder="September 30, 2026" />
           </div>
         </div>
 
         <div>
-          <label style="font-size:0.75rem; color:var(--text-muted);">Forwarding Address</label>
+          <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Forwarding Address</label>
           <input id="inp-forwarding" type="text" class="chat-input" style="width:100%;" placeholder="123 New Hope St, New York, NY" />
         </div>
 
-        <button id="btn-generate-letter" class="btn btn-primary" style="margin-top:0.5rem;">
-          <i data-lucide="sparkles" style="width:16px; height:16px;"></i>
+        <button id="btn-generate-letter" type="button" class="btn btn-primary" style="margin-top:0.4rem;">
+          <i data-lucide="sparkles" style="width:15px; height:15px;" aria-hidden="true"></i>
           <span>Generate Formal Letter</span>
         </button>
       </div>
@@ -203,42 +217,46 @@ function renderLetterGeneratorView() {
       <!-- Letter Output Box -->
       <div style="display:flex; flex-direction:column; gap:0.75rem;">
         <div style="display:flex; align-items:center; justify-content:space-between;">
-          <h4 style="font-size:1rem; font-weight:700;">Generated Letter Preview</h4>
-          <button id="btn-copy-letter" class="btn btn-secondary btn-sm">
-            <i data-lucide="copy" style="width:14px; height:14px;"></i>
+          <h4 style="font-size:1rem; font-weight:700;">Generated Notice Preview</h4>
+          <button id="btn-copy-letter" type="button" class="btn btn-secondary btn-sm" title="Copy letter text">
+            <i data-lucide="copy" style="width:13px; height:13px;" aria-hidden="true"></i>
             <span>Copy Text</span>
           </button>
         </div>
 
-        <textarea id="letter-output-box" class="doc-textarea" style="height:360px;" placeholder="Click 'Generate Formal Letter' to preview letter draft here..."></textarea>
+        <textarea id="letter-output-box" class="doc-textarea" style="height:360px;" placeholder="Click 'Generate Formal Letter' to preview letter draft here..." aria-label="Generated letter content"></textarea>
       </div>
     </div>
   `;
 }
 
 function renderNegotiationScriptView(clauses) {
+  const flagged = clauses.filter((c) => c.type === 'high' || c.type === 'medium');
+
   return `
-    <h4 style="font-size:1rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
-      <i data-lucide="message-square" style="width:18px; height:18px; color:var(--accent-secondary);"></i>
-      Counter-Proposal Negotiation Script
+    <h4 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
+      <i data-lucide="message-square" style="width:18px; height:18px; color:var(--accent-secondary);" aria-hidden="true"></i>
+      Counter-Proposal Negotiation Scripts
     </h4>
 
-    <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.25rem;">
-      Use these pre-written response emails and counter-proposals to request fair revisions for identified red flags.
+    <p style="font-size:0.86rem; color:var(--text-secondary); margin-bottom:1.25rem;">
+      Pre-written negotiation responses to counter unfair terms and propose reasonable bilateral alternatives:
     </p>
 
-    <div style="display:flex; flex-direction:column; gap:1rem;">
-      ${clauses.filter(c => c.type === 'high' || c.type === 'medium').map(c => `
-        <div style="padding:1.1rem; border-radius:var(--radius-sm); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);">
+    <div style="display:flex; flex-direction:column; gap:1rem;" role="list">
+      ${flagged.length === 0 ? `
+        <div style="color:var(--text-muted); font-size:0.88rem;">No high or medium risk clauses flagged for negotiation.</div>
+      ` : flagged.map((c) => `
+        <div style="padding:1.15rem; border-radius:var(--radius-sm); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);" role="listitem">
           <div style="font-weight:700; font-size:0.92rem; color:var(--risk-${c.type === 'high' ? 'high' : 'medium'}); margin-bottom:0.4rem;">
-            Issue: ${c.title} (${c.line})
+            Issue: ${escapeHtml(c.title)} (${escapeHtml(c.line)})
           </div>
-          <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.6rem;">
-            Original Clause: "${c.originalText}"
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">
+            Original Clause: "${escapeHtml(c.originalText)}"
           </div>
-          <div style="padding:0.75rem; border-radius:6px; background:rgba(0,0,0,0.3); border-left:3px solid var(--accent-primary); font-size:0.85rem;">
+          <div style="padding:0.75rem 1rem; border-radius:6px; background:rgba(0,0,0,0.3); border-left:3px solid var(--accent-primary); font-size:0.86rem; line-height:1.6;">
             <strong>Suggested Email Counter-Offer Script:</strong><br/>
-            "Regarding Section '${c.line}', we respectfully request modifying the current terms to: '${c.recommendation}'. This aligns with standard industry practice and ensures a fair, balanced agreement for both parties."
+            "Regarding Section '${escapeHtml(c.line)}', we respectfully request modifying the current terms to: '${escapeHtml(c.recommendation)}'. This aligns with standard industry practice and ensures an equitable agreement for both parties."
           </div>
         </div>
       `).join('')}
