@@ -1,0 +1,10 @@
+# LexiGuard AI - Git Ignore
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
