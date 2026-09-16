@@ -4,6 +4,8 @@
  * @module piiMasker
  */
 
+import { safeStorage } from '../utils.js';
+
 /**
  * @typedef {Object} AnonymizeResult
  * @property {string} sanitizedText - The anonymized document text
@@ -124,8 +126,7 @@ export class PIIMasker {
    */
   purgeSession() {
     try {
-      localStorage.clear();
-      sessionStorage.clear();
+      safeStorage.clear();
       return true;
     } catch (e) {
       console.warn('[PIIMasker] Session purge exception:', e);

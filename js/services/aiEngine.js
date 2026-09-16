@@ -5,7 +5,7 @@
  */
 
 import { piiService } from './piiMasker.js';
-import { clamp } from '../utils.js';
+import { clamp, safeStorage } from '../utils.js';
 
 /**
  * @typedef {Object} ClauseItem
@@ -37,7 +37,7 @@ import { clamp } from '../utils.js';
 
 export class AIEngine {
   constructor() {
-    this.apiKey = localStorage.getItem('lexiguard_gemini_key') || '';
+    this.apiKey = safeStorage.getItem('lexiguard_gemini_key') || '';
     this.apiTimeoutMs = 15000;
   }
 
@@ -48,9 +48,9 @@ export class AIEngine {
   setApiKey(key) {
     this.apiKey = typeof key === 'string' ? key.trim() : '';
     if (this.apiKey) {
-      localStorage.setItem('lexiguard_gemini_key', this.apiKey);
+      safeStorage.setItem('lexiguard_gemini_key', this.apiKey);
     } else {
-      localStorage.removeItem('lexiguard_gemini_key');
+      safeStorage.removeItem('lexiguard_gemini_key');
     }
   }
 
@@ -348,7 +348,7 @@ ${sanitizedText.slice(0, 9000)}`;
     }
 
     // 2. Restrictive Covenants / Non-Compete
-    if (textLower.includes('non-compete') || textLower.includes('non-competition') || textLower.includes('competing')) {
+    if (textLower.includes('non-compete') || textLower.includes('non-competition') || textLower.includes('competing') || textLower.includes('compete')) {
       riskScore += 25;
       clauses.push({
         id: 'c_non_compete',
@@ -411,7 +411,7 @@ ${sanitizedText.slice(0, 9000)}`;
     timeline.push({ date: 'Periodic / Monthly', title: 'Payment & Milestone Schedule', type: 'payment' });
 
     riskScore = clamp(riskScore, 15, 95);
-    const riskCategory = riskScore > 70 ? 'High Risk' : (riskScore > 40 ? 'Moderate' : 'Low Risk');
+    const riskCategory = riskScore >= 70 ? 'High Risk' : (riskScore >= 40 ? 'Moderate' : 'Low Risk');
 
     return {
       riskScore,

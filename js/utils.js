@@ -1,7 +1,50 @@
 /**
  * LexiGuard AI - Core Utility & Security Library
- * High-performance, zero-dependency helpers for sanitization, toasts, and debouncing.
+ * High-performance, zero-dependency helpers for sanitization, safe storage, and toasts.
  */
+
+/**
+ * Safe isomorphic storage adapter compatible with Browsers, Node.js, and SSR.
+ */
+export const safeStorage = Object.freeze({
+  getItem(key) {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    } catch {
+      return null;
+    }
+  },
+  setItem(key, value) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } catch (e) {
+      console.warn('[safeStorage] setItem failed:', e);
+    }
+  },
+  removeItem(key) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } catch (e) {
+      console.warn('[safeStorage] removeItem failed:', e);
+    }
+  },
+  clear() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.clear();
+      }
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.clear();
+      }
+    } catch (e) {
+      console.warn('[safeStorage] clear failed:', e);
+    }
+  }
+});
 
 /**
  * Escapes unsafe HTML characters to prevent XSS attacks.
@@ -50,6 +93,8 @@ export function clamp(val, min = 0, max = 100) {
  * @param {number} [durationMs=3500] - Duration before auto-dismiss
  */
 export function showToast(message, type = 'info', durationMs = 3500) {
+  if (typeof document === 'undefined') return;
+
   let container = document.getElementById('toast-container');
   if (!container) {
     container = document.createElement('div');
