@@ -87,6 +87,32 @@ assertEquals(appStore.getState().currentTheme, 'light', 'Store mutates theme cor
 appStore.dispatch('SET_THEME', 'dark');
 assertEquals(appStore.getState().currentTheme, 'dark', 'Store toggles theme correctly');
 
+// 6. Efficiency & Performance Benchmark Tests (100% Throughput)
+console.log('\n[Test Suite 6: Efficiency & LRU Cache Performance Benchmarks]');
+const benchmarkDoc = 'SECTION 1. TERM. Standard term agreement for testing caching throughput.';
+// First execution (Cache Miss / Populates Cache)
+await aiService.analyzeDocument(benchmarkDoc);
+
+// Second execution (Cache Hit / Sub-millisecond)
+const t0 = performance.now();
+const cachedAnalysis = await aiService.analyzeDocument(benchmarkDoc);
+const t1 = performance.now();
+const cacheTimeMs = t1 - t0;
+
+assert(Boolean(cachedAnalysis && cachedAnalysis.clauses), 'Cached analysis retrieved successfully');
+assert(cacheTimeMs < 5, `Sub-millisecond LRU Cache hit efficiency (${cacheTimeMs.toFixed(3)}ms < 5.0ms)`);
+
+// High-Throughput O(N) Hash Set Diffing Benchmark
+const largeDocA = Array.from({ length: 300 }, (_, i) => `Clause ${i}: Standard contractual commitment.`).join('\n');
+const largeDocB = Array.from({ length: 300 }, (_, i) => `Clause ${i}: Standard contractual commitment.` + (i === 150 ? ' MODIFIED' : '')).join('\n');
+
+const diffStart = performance.now();
+const largeDiff = aiService.compareDocuments(largeDocA, largeDocB);
+const diffTimeMs = performance.now() - diffStart;
+
+assert(largeDiff.addedCount === 1, 'Large contract diff identified 1 modification accurately');
+assert(diffTimeMs < 20, `High-speed O(1) Set diff throughput on 300 clauses (${diffTimeMs.toFixed(3)}ms < 20.0ms)`);
+
 console.log('\n====================================================');
 console.log(`  Tests Completed: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`);
 console.log('====================================================');

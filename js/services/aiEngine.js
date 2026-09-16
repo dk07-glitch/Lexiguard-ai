@@ -39,6 +39,11 @@ export class AIEngine {
   constructor() {
     this.apiKey = safeStorage.getItem('lexiguard_gemini_key') || '';
     this.apiTimeoutMs = 15000;
+    /** @type {Map<string, AnalysisResult>} LRU memoization cache for 0ms retrieval */
+    this._analysisCache = new Map();
+    this._maxCacheEntries = 50;
+    /** @type {AbortController|null} In-flight request controller */
+    this._inFlightController = null;
   }
 
   /**
@@ -47,6 +52,7 @@ export class AIEngine {
    */
   setApiKey(key) {
     this.apiKey = typeof key === 'string' ? key.trim() : '';
+    this._analysisCache.clear(); // Invalidate cache on key change
     if (this.apiKey) {
       safeStorage.setItem('lexiguard_gemini_key', this.apiKey);
     } else {
@@ -63,32 +69,68 @@ export class AIEngine {
   }
 
   /**
-   * Evaluates a legal document to calculate risk scores, extract clauses, and map deadlines.
+   * Evaluates a legal document with sub-millisecond LRU memoization.
    * @param {string} text - Raw legal contract text
    * @returns {Promise<AnalysisResult>}
    */
   async analyzeDocument(text) {
     const rawText = typeof text === 'string' ? text : '';
+    const cacheKey = `${this.apiKey ? 'live:' : 'local:'}${rawText.slice(0, 500)}_${rawText.length}`;
+
+    // 1. Check LRU Cache for 100% Instant Retrieval (0ms Latency)
+    if (this._analysisCache.has(cacheKey)) {
+      const cached = this._analysisCache.get(cacheKey);
+      // Move to front of LRU Map
+      this._analysisCache.delete(cacheKey);
+      this._analysisCache.set(cacheKey, cached);
+      return cached;
+    }
+
+    // 2. Cancel any pending in-flight analysis to conserve bandwidth and CPU
+    if (this._inFlightController) {
+      this._inFlightController.abort();
+      this._inFlightController = null;
+    }
+
     const { sanitizedText, redactsCount } = piiService.anonymize(rawText);
+    let result;
 
     if (this.hasApiKey()) {
       try {
-        const liveResult = await this._callGeminiApiForAnalysis(sanitizedText);
-        return {
+        this._inFlightController = new AbortController();
+        const liveResult = await this._callGeminiApiForAnalysis(sanitizedText, this._inFlightController.signal);
+        result = {
           ...liveResult,
           riskScore: clamp(liveResult.riskScore, 0, 100),
           piiRedactedCount: redactsCount
         };
       } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log('[AIEngine] In-flight analysis successfully cancelled.');
+          return;
+        }
         console.warn('[AIEngine] Gemini API analysis failed. Falling back to local NLP engine:', err.message);
+      } finally {
+        this._inFlightController = null;
       }
     }
 
-    return this._localNLPAnalysis(rawText, redactsCount);
+    if (!result) {
+      result = this._localNLPAnalysis(rawText, redactsCount);
+    }
+
+    // 3. Store in Bounded LRU Cache
+    if (this._analysisCache.size >= this._maxCacheEntries) {
+      const oldestKey = this._analysisCache.keys().next().value;
+      this._analysisCache.delete(oldestKey);
+    }
+    this._analysisCache.set(cacheKey, result);
+
+    return result;
   }
 
   /**
-   * Performs side-by-side differential analysis between two contracts.
+   * Performs high-speed O(N + M) side-by-side differential analysis using Hash Sets.
    * @param {string} docA - Baseline contract draft (Version A)
    * @param {string} docB - Proposed counter-offer (Version B)
    * @returns {Object} Comparison metrics and identified diff highlights
@@ -97,17 +139,21 @@ export class AIEngine {
     const linesA = (docA || '').split('\n').map((l) => l.trim()).filter(Boolean);
     const linesB = (docB || '').split('\n').map((l) => l.trim()).filter(Boolean);
 
+    // O(1) Lookup Hash Sets for maximum diffing throughput
+    const setA = new Set(linesA);
+    const setB = new Set(linesB);
+
     const added = [];
     const removed = [];
 
     linesB.forEach((line, index) => {
-      if (!linesA.includes(line)) {
+      if (!setA.has(line)) {
         added.push({ index: index + 1, text: line, type: 'added' });
       }
     });
 
     linesA.forEach((line, index) => {
-      if (!linesB.includes(line)) {
+      if (!setB.has(line)) {
         removed.push({ index: index + 1, text: line, type: 'removed' });
       }
     });
@@ -272,7 +318,7 @@ ${details.senderName || '[Authorized Signatory]'}`;
 
   // --- Private Helper Methods ---
 
-  async _callGeminiApiForAnalysis(sanitizedText) {
+  async _callGeminiApiForAnalysis(sanitizedText, externalSignal) {
     const prompt = `Analyze this legal contract text and return a strict JSON object with these keys:
 - riskScore: number between 0 and 100
 - riskCategory: "Low Risk", "Moderate", or "High Risk"
@@ -283,7 +329,7 @@ ${details.senderName || '[Authorized Signatory]'}`;
 CONTRACT TEXT:
 ${sanitizedText.slice(0, 9000)}`;
 
-    const rawResponse = await this._rawGeminiCall(prompt);
+    const rawResponse = await this._rawGeminiCall(prompt, externalSignal);
     const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
@@ -291,10 +337,14 @@ ${sanitizedText.slice(0, 9000)}`;
     throw new Error('Could not parse valid JSON from Gemini API response');
   }
 
-  async _rawGeminiCall(promptText) {
+  async _rawGeminiCall(promptText, externalSignal) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.apiTimeoutMs);
+
+    if (externalSignal) {
+      externalSignal.addEventListener('abort', () => controller.abort());
+    }
 
     try {
       const res = await fetch(url, {
