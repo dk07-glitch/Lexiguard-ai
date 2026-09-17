@@ -5,7 +5,7 @@
 
 import { aiService } from '../services/aiEngine.js';
 import { exporter } from '../services/exporter.js';
-import { escapeHtml, showToast } from '../utils.js';
+import { escapeHtml, showToast, announceA11y } from '../utils.js';
 
 export function renderActionCenter(container, documentTitle, analysis) {
   if (!container) return;
@@ -29,11 +29,11 @@ export function renderActionCenter(container, documentTitle, analysis) {
           </div>
 
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button id="btn-print-lawyer" type="button" class="btn btn-secondary btn-sm" title="Print or save as PDF">
+            <button id="btn-print-lawyer" type="button" class="btn btn-secondary btn-sm" title="Print or save as PDF" aria-label="Print lawyer briefing pack">
               <i data-lucide="printer" style="width:14px; height:14px;" aria-hidden="true"></i>
               <span>Print Briefing</span>
             </button>
-            <button id="btn-export-lawyer" type="button" class="btn btn-primary btn-sm" title="Download text consultation pack">
+            <button id="btn-export-lawyer" type="button" class="btn btn-primary btn-sm" title="Download text consultation pack" aria-label="Download lawyer consultation pack">
               <i data-lucide="download" style="width:14px; height:14px;" aria-hidden="true"></i>
               <span>Download Lawyer Pack</span>
             </button>
@@ -42,15 +42,15 @@ export function renderActionCenter(container, documentTitle, analysis) {
 
         <!-- Action Sub-Tabs Navigation -->
         <div class="nav-tabs" style="margin-bottom:0;" role="tablist" aria-label="Action Center Modules">
-          <button type="button" class="tab-btn ${activeTab === 'timeline' ? 'active' : ''}" data-act-tab="timeline">
+          <button type="button" class="tab-btn ${activeTab === 'timeline' ? 'active' : ''}" data-act-tab="timeline" role="tab" aria-selected="${activeTab === 'timeline'}" tabindex="${activeTab === 'timeline' ? '0' : '-1'}">
             <i data-lucide="calendar" style="width:15px; height:15px;" aria-hidden="true"></i>
             <span>Obligations Timeline</span>
           </button>
-          <button type="button" class="tab-btn ${activeTab === 'letter' ? 'active' : ''}" data-act-tab="letter">
+          <button type="button" class="tab-btn ${activeTab === 'letter' ? 'active' : ''}" data-act-tab="letter" role="tab" aria-selected="${activeTab === 'letter'}" tabindex="${activeTab === 'letter' ? '0' : '-1'}">
             <i data-lucide="file-signature" style="width:15px; height:15px;" aria-hidden="true"></i>
             <span>Formal Letter Generator</span>
           </button>
-          <button type="button" class="tab-btn ${activeTab === 'negotiation' ? 'active' : ''}" data-act-tab="negotiation">
+          <button type="button" class="tab-btn ${activeTab === 'negotiation' ? 'active' : ''}" data-act-tab="negotiation" role="tab" aria-selected="${activeTab === 'negotiation'}" tabindex="${activeTab === 'negotiation' ? '0' : '-1'}">
             <i data-lucide="handshake" style="width:15px; height:15px;" aria-hidden="true"></i>
             <span>Negotiation Counter-Script</span>
           </button>
@@ -109,6 +109,7 @@ export function renderActionCenter(container, documentTitle, analysis) {
           outputBox.value = generatedLetter;
         }
         showToast('Formal letter generated successfully!', 'success', 2500);
+        announceA11y('Formal letter generated successfully.');
       });
 
       const copyBtn = container.querySelector('#btn-copy-letter');
@@ -117,6 +118,7 @@ export function renderActionCenter(container, documentTitle, analysis) {
         if (text) {
           navigator.clipboard.writeText(text);
           showToast('Letter copied to clipboard!', 'success', 2500);
+          announceA11y('Letter text copied to clipboard.');
         } else {
           showToast('Generate a letter first to copy.', 'warning', 2500);
         }
@@ -168,7 +170,7 @@ function renderLetterGeneratorView() {
         </h4>
 
         <div>
-          <label style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.35rem;">Select Letter Template</label>
+          <label for="letter-type-select" style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.35rem;">Select Letter Template</label>
           <select id="letter-type-select" class="chat-input" style="width:100%;" aria-label="Select letter type">
             <option value="lease_deposit">Security Deposit Demand Notice (Tenant Dispute)</option>
             <option value="non_compete_waiver">Non-Compete Waiver Request (Employee Departure)</option>
@@ -178,37 +180,37 @@ function renderLetterGeneratorView() {
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Recipient / Entity</label>
+            <label for="inp-landlord" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Recipient / Entity</label>
             <input id="inp-landlord" type="text" class="chat-input" style="width:100%;" placeholder="Apex Properties LLC" />
           </div>
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Your Full Name</label>
+            <label for="inp-tenant" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Your Full Name</label>
             <input id="inp-tenant" type="text" class="chat-input" style="width:100%;" placeholder="John Doe" />
           </div>
         </div>
 
         <div>
-          <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Address / Contract Ref</label>
+          <label for="inp-address" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Address / Contract Ref</label>
           <input id="inp-address" type="text" class="chat-input" style="width:100%;" placeholder="452 Skyline Blvd, Apt 4B" />
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Disputed / Claim Amount</label>
+            <label for="inp-amount" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Disputed / Claim Amount</label>
             <input id="inp-amount" type="text" class="chat-input" style="width:100%;" placeholder="$3,400.00" />
           </div>
           <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Effective / Vacate Date</label>
+            <label for="inp-date" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Effective / Vacate Date</label>
             <input id="inp-date" type="text" class="chat-input" style="width:100%;" placeholder="September 30, 2026" />
           </div>
         </div>
 
         <div>
-          <label style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Forwarding Address</label>
+          <label for="inp-forwarding" style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Forwarding Address</label>
           <input id="inp-forwarding" type="text" class="chat-input" style="width:100%;" placeholder="123 New Hope St, New York, NY" />
         </div>
 
-        <button id="btn-generate-letter" type="button" class="btn btn-primary" style="margin-top:0.4rem;">
+        <button id="btn-generate-letter" type="button" class="btn btn-primary" style="margin-top:0.4rem;" aria-label="Generate formal legal notice letter">
           <i data-lucide="sparkles" style="width:15px; height:15px;" aria-hidden="true"></i>
           <span>Generate Formal Letter</span>
         </button>
@@ -217,14 +219,14 @@ function renderLetterGeneratorView() {
       <!-- Letter Output Box -->
       <div style="display:flex; flex-direction:column; gap:0.75rem;">
         <div style="display:flex; align-items:center; justify-content:space-between;">
-          <h4 style="font-size:1rem; font-weight:700;">Generated Notice Preview</h4>
-          <button id="btn-copy-letter" type="button" class="btn btn-secondary btn-sm" title="Copy letter text">
+          <label for="letter-output-box" style="font-size:1rem; font-weight:700;">Generated Notice Preview</label>
+          <button id="btn-copy-letter" type="button" class="btn btn-secondary btn-sm" title="Copy letter text" aria-label="Copy generated letter text to clipboard">
             <i data-lucide="copy" style="width:13px; height:13px;" aria-hidden="true"></i>
             <span>Copy Text</span>
           </button>
         </div>
 
-        <textarea id="letter-output-box" class="doc-textarea" style="height:360px;" placeholder="Click 'Generate Formal Letter' to preview letter draft here..." aria-label="Generated letter content"></textarea>
+        <textarea id="letter-output-box" class="doc-textarea" style="height:360px;" placeholder="Click 'Generate Formal Letter' to preview letter draft here..." aria-label="Generated letter draft text"></textarea>
       </div>
     </div>
   `;

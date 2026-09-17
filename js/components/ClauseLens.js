@@ -54,10 +54,10 @@ export function renderClauseLens(container, documentText, clauses = []) {
             
             <!-- Category Filter Tabs -->
             <div style="display:flex; gap:0.3rem;" role="tablist" aria-label="Clause Filter Categories">
-              <button type="button" class="btn btn-sm ${activeFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" data-filter="all">All</button>
-              <button type="button" class="btn btn-sm ${activeFilter === 'high' ? 'btn-primary' : 'btn-secondary'}" data-filter="high">Red Flags</button>
-              <button type="button" class="btn btn-sm ${activeFilter === 'medium' ? 'btn-primary' : 'btn-secondary'}" data-filter="medium">Caution</button>
-              <button type="button" class="btn btn-sm ${activeFilter === 'low' ? 'btn-primary' : 'btn-secondary'}" data-filter="low">Standard</button>
+              <button type="button" class="btn btn-sm ${activeFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" data-filter="all" role="tab" aria-selected="${activeFilter === 'all'}" tabindex="${activeFilter === 'all' ? '0' : '-1'}">All</button>
+              <button type="button" class="btn btn-sm ${activeFilter === 'high' ? 'btn-primary' : 'btn-secondary'}" data-filter="high" role="tab" aria-selected="${activeFilter === 'high'}" tabindex="${activeFilter === 'high' ? '0' : '-1'}">Red Flags</button>
+              <button type="button" class="btn btn-sm ${activeFilter === 'medium' ? 'btn-primary' : 'btn-secondary'}" data-filter="medium" role="tab" aria-selected="${activeFilter === 'medium'}" tabindex="${activeFilter === 'medium' ? '0' : '-1'}">Caution</button>
+              <button type="button" class="btn btn-sm ${activeFilter === 'low' ? 'btn-primary' : 'btn-secondary'}" data-filter="low" role="tab" aria-selected="${activeFilter === 'low'}" tabindex="${activeFilter === 'low' ? '0' : '-1'}">Standard</button>
             </div>
           </div>
 

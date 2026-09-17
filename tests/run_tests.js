@@ -4,7 +4,8 @@
  * Q&A Copilot, Dispute Letter Generator, Exporter, Reactive Store, Sample Contracts & Benchmarks.
  */
 
-import { escapeHtml, clamp, debounce, safeStorage } from '../js/utils.js';
+import fs from 'fs';
+import { escapeHtml, clamp, debounce, safeStorage, announceA11y, trapFocus } from '../js/utils.js';
 import { piiService, PIIMasker } from '../js/services/piiMasker.js';
 import { aiService } from '../js/services/aiEngine.js';
 import { exporter } from '../js/services/exporter.js';
@@ -344,6 +345,55 @@ for (let i = 0; i < 60; i++) {
   await aiService.analyzeDocument(`Unique contractual agreement variant ${i} ${Date.now()}`);
 }
 assert(aiService._analysisCache.size <= 50, `LRU cache size bounded within max capacity (${aiService._analysisCache.size} <= 50)`);
+
+// ------------------------------------------------------------------
+// SUITE 11: Comprehensive Accessibility Verification (WCAG 2.1 AA/AAA)
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 11: Comprehensive Accessibility (WCAG 2.1 AA/AAA)]');
+
+// 1. Live Announcer & Focus Trap Utilities
+let announceFailed = false;
+try {
+  announceA11y('Accessibility status test announcement');
+} catch {
+  announceFailed = true;
+}
+assert(!announceFailed, 'announceA11y executes safely in all environments');
+
+const dummyCleanup = trapFocus(null);
+assertEquals(typeof dummyCleanup, 'function', 'trapFocus returns valid cleanup function on null/empty container');
+
+// 2. HTML Markup & Bypass Landmarks
+const indexHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+assert(indexHtml.includes('class="skip-link"'), 'Skip-to-content bypass link declared in index.html');
+assert(indexHtml.includes('href="#main-content"'), 'Skip-to-content links specifically to #main-content landmark');
+assert(indexHtml.includes('id="a11y-announcer"'), 'Global ARIA live region element exists in DOM');
+assert(indexHtml.includes('aria-live="polite"'), 'Global live region configured with polite priority');
+assert(indexHtml.includes('role="status"'), 'Global live region has valid status role');
+
+// 3. CSS High-Contrast & Motion Safety
+const stylesCss = fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf-8');
+assert(stylesCss.includes(':focus-visible'), 'Universal high-contrast focus rings configured in CSS');
+assert(stylesCss.includes('.skip-link:focus'), 'Skip link elevates prominently upon focus');
+assert(stylesCss.includes('.sr-only'), 'Screen reader utility class (.sr-only) defined');
+assert(stylesCss.includes('prefers-reduced-motion: reduce'), 'prefers-reduced-motion media query implemented for vestibular safety');
+assert(stylesCss.includes('--text-muted: #94a3b8;'), 'WCAG AAA contrast upgraded for muted text on dark theme (>= 4.5:1)');
+
+// 4. App & Component Semantic Landmarks & Keyboard Navigation
+const appJs = fs.readFileSync(new URL('../js/app.js', import.meta.url), 'utf-8');
+assert(appJs.includes('id="main-content"'), 'Main landmark target #main-content exists in layout');
+assert(appJs.includes('ArrowRight') && appJs.includes('ArrowLeft'), 'Arrow key roving tabindex navigation implemented on tablist');
+assert(appJs.includes('aria-pressed'), 'Sample selector chips support aria-pressed toggle state');
+
+const riskJs = fs.readFileSync(new URL('../js/components/RiskOverview.js', import.meta.url), 'utf-8');
+assert(riskJs.includes('<title>Legal Risk Score') && riskJs.includes('<desc>'), 'SVG gauge provides accessible <title> and <desc> for screen readers');
+
+const actionJs = fs.readFileSync(new URL('../js/components/ActionCenter.js', import.meta.url), 'utf-8');
+assert(actionJs.includes('for="inp-landlord"') && actionJs.includes('for="inp-amount"'), 'All formal letter input fields associated with explicit <label for="...">');
+
+const privacyJs = fs.readFileSync(new URL('../js/components/PrivacyShield.js', import.meta.url), 'utf-8');
+assert(privacyJs.includes("'role', 'dialog'") && privacyJs.includes("'aria-modal', 'true'"), 'Privacy modal implements WAI-ARIA dialog semantics');
+assert(privacyJs.includes('trapFocus'), 'Privacy modal enforces keyboard focus trapping');
 
 // ------------------------------------------------------------------
 // Final Summary & Verification

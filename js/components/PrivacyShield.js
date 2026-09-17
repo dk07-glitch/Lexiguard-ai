@@ -4,7 +4,7 @@
  */
 
 import { piiService } from '../services/piiMasker.js';
-import { showToast } from '../utils.js';
+import { showToast, trapFocus, announceA11y } from '../utils.js';
 
 export function createPrivacyModal({ onClose }) {
   const modal = document.createElement('div');
@@ -76,18 +76,17 @@ export function createPrivacyModal({ onClose }) {
     window.lucide.createIcons({ root: modal });
   }
 
+  announceA11y('Client-Side Privacy Shield settings dialog opened.');
+
+  let untrap;
+
   const handleClose = () => {
-    document.removeEventListener('keydown', handleKeyDown);
+    if (typeof untrap === 'function') untrap();
+    announceA11y('Privacy Shield settings dialog closed.');
     onClose();
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      handleClose();
-    }
-  };
-
-  document.addEventListener('keydown', handleKeyDown);
+  untrap = trapFocus(modal, handleClose);
 
   modal.querySelector('#modal-close-btn')?.addEventListener('click', handleClose);
   modal.querySelector('#btn-done-privacy')?.addEventListener('click', handleClose);

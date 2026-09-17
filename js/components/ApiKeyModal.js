@@ -4,7 +4,7 @@
  */
 
 import { aiService } from '../services/aiEngine.js';
-import { escapeHtml, showToast } from '../utils.js';
+import { escapeHtml, showToast, trapFocus, announceA11y } from '../utils.js';
 
 export function createApiKeyModal({ onClose, onKeyUpdated }) {
   const modal = document.createElement('div');
@@ -51,18 +51,17 @@ export function createApiKeyModal({ onClose, onKeyUpdated }) {
     window.lucide.createIcons({ root: modal });
   }
 
+  announceA11y('Configure Gemini AI API Key dialog opened.');
+
+  let untrap;
+
   const handleClose = () => {
-    document.removeEventListener('keydown', handleKeyDown);
+    if (typeof untrap === 'function') untrap();
+    announceA11y('API Key dialog closed.');
     onClose();
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      handleClose();
-    }
-  };
-
-  document.addEventListener('keydown', handleKeyDown);
+  untrap = trapFocus(modal, handleClose);
 
   modal.querySelector('#modal-key-close')?.addEventListener('click', handleClose);
   modal.addEventListener('click', (e) => {

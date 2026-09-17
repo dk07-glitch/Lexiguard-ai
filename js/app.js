@@ -14,7 +14,7 @@ import { renderQACopilot } from './components/QACopilot.js';
 import { renderActionCenter } from './components/ActionCenter.js';
 import { createPrivacyModal } from './components/PrivacyShield.js';
 import { createApiKeyModal } from './components/ApiKeyModal.js';
-import { escapeHtml, showToast, debounce } from './utils.js';
+import { escapeHtml, showToast, debounce, announceA11y } from './utils.js';
 
 class LexiGuardApp {
   constructor() {
@@ -40,6 +40,7 @@ class LexiGuardApp {
     this.initTheme();
     this.renderHeader();
     showToast(`Switched to ${this.currentTheme} mode`, 'info', 1500);
+    announceA11y(`Theme switched to ${this.currentTheme} mode`);
   }
 
   async initApp() {
@@ -80,21 +81,21 @@ class LexiGuardApp {
         </div>
       </section>
 
-      <!-- Segmented Main Workspace Tabs -->
+      <!-- Segmented Main Workspace Tabs with Roving Tabindex & ARIA -->
       <nav class="nav-tabs" role="tablist" aria-label="Main Application Views">
-        <button type="button" class="tab-btn active" data-tab="analysis" role="tab" aria-selected="true" aria-controls="tab-analysis">
+        <button id="tab-btn-analysis" type="button" class="tab-btn active" data-tab="analysis" role="tab" aria-selected="true" aria-controls="tab-analysis" tabindex="0">
           <i data-lucide="shield-alert" style="width:16px; height:16px;" aria-hidden="true"></i>
           <span>Document Risk & Clause Lens</span>
         </button>
-        <button type="button" class="tab-btn" data-tab="comparator" role="tab" aria-selected="false" aria-controls="tab-comparator">
+        <button id="tab-btn-comparator" type="button" class="tab-btn" data-tab="comparator" role="tab" aria-selected="false" aria-controls="tab-comparator" tabindex="-1">
           <i data-lucide="git-compare" style="width:16px; height:16px;" aria-hidden="true"></i>
           <span>Contract Comparator</span>
         </button>
-        <button type="button" class="tab-btn" data-tab="copilot" role="tab" aria-selected="false" aria-controls="tab-copilot">
+        <button id="tab-btn-copilot" type="button" class="tab-btn" data-tab="copilot" role="tab" aria-selected="false" aria-controls="tab-copilot" tabindex="-1">
           <i data-lucide="bot" style="width:16px; height:16px;" aria-hidden="true"></i>
           <span>AI Legal Copilot</span>
         </button>
-        <button type="button" class="tab-btn" data-tab="action" role="tab" aria-selected="false" aria-controls="tab-action">
+        <button id="tab-btn-action" type="button" class="tab-btn" data-tab="action" role="tab" aria-selected="false" aria-controls="tab-action" tabindex="-1">
           <i data-lucide="compass" style="width:16px; height:16px;" aria-hidden="true"></i>
           <span>Action Center & Letters</span>
         </button>
@@ -108,35 +109,37 @@ class LexiGuardApp {
         </div>
         <div class="sample-chips" role="toolbar" aria-label="Sample contract options">
           ${Object.keys(SAMPLE_DOCUMENTS).map((key) => `
-            <button type="button" class="sample-chip ${key === this.currentSampleId ? 'active' : ''}" data-sample-key="${key}">
+            <button type="button" class="sample-chip ${key === this.currentSampleId ? 'active' : ''}" data-sample-key="${key}" aria-pressed="${key === this.currentSampleId}">
               ${SAMPLE_DOCUMENTS[key].title.split(' (')[0]}
             </button>
           `).join('')}
         </div>
       </section>
 
-      <!-- Main Tab Content Views -->
-      <main style="flex:1;">
+      <!-- Main Tab Content Views with Focusable Landmark for Skip-Link -->
+      <main id="main-content" tabindex="-1" style="flex:1;" aria-label="LexiGuard Legal Intelligence Workspace">
         <!-- TAB 1: Document Analysis & Split View Clause Lens -->
-        <section id="tab-analysis" class="view-section active" role="tabpanel" aria-labelledby="tab-analysis">
+        <section id="tab-analysis" class="view-section active" role="tabpanel" aria-labelledby="tab-btn-analysis" tabindex="0">
           <div class="doc-editor-grid">
             <!-- Left: Document Input Card -->
             <div class="glass-panel" style="display:flex; flex-direction:column; padding:1.25rem;">
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
-                <input id="doc-title-input" type="text" class="chat-input" style="font-weight:700; font-size:0.98rem; flex:1;" value="${escapeHtml(this.documentTitle)}" aria-label="Contract Title" />
+                <label for="doc-title-input" class="sr-only">Contract Title</label>
+                <input id="doc-title-input" type="text" class="chat-input" style="font-weight:700; font-size:0.98rem; flex:1;" value="${escapeHtml(this.documentTitle)}" placeholder="Contract Title..." aria-label="Contract Title" />
                 <div style="display:flex; gap:0.4rem;">
-                  <label class="btn btn-secondary btn-sm" style="cursor:pointer;" title="Upload contract file (.txt, .md, .doc)">
+                  <label for="file-upload-input" class="btn btn-secondary btn-sm" style="cursor:pointer;" title="Upload contract file (.txt, .md, .doc)" tabindex="0" role="button" aria-label="Upload contract file">
                     <i data-lucide="upload" style="width:14px; height:14px;" aria-hidden="true"></i>
                     <span>Upload File</span>
-                    <input id="file-upload-input" type="file" accept=".txt,.md,.doc,.docx" style="display:none;" />
+                    <input id="file-upload-input" type="file" accept=".txt,.md,.doc,.docx" style="display:none;" aria-label="Upload contract file dialog" />
                   </label>
-                  <button id="btn-reanalyze" type="button" class="btn btn-primary btn-sm" title="Re-evaluate with AI (Ctrl+Enter)">
+                  <button id="btn-reanalyze" type="button" class="btn btn-primary btn-sm" title="Re-evaluate with AI (Ctrl+Enter)" aria-label="Re-analyze contract with AI">
                     <i data-lucide="sparkles" style="width:14px; height:14px;" aria-hidden="true"></i>
                     <span>Analyze AI</span>
                   </button>
                 </div>
               </div>
 
+              <label for="main-doc-textarea" class="sr-only">Contract Raw Text Input</label>
               <textarea id="main-doc-textarea" class="doc-textarea" placeholder="Paste or upload your contract text here for instant AI breakdown..." aria-label="Contract raw text input">${escapeHtml(this.documentText)}</textarea>
             </div>
 
@@ -149,17 +152,17 @@ class LexiGuardApp {
         </section>
 
         <!-- TAB 2: Side-by-Side Comparator -->
-        <section id="tab-comparator" class="view-section" role="tabpanel" aria-labelledby="tab-comparator">
+        <section id="tab-comparator" class="view-section" role="tabpanel" aria-labelledby="tab-btn-comparator" tabindex="0">
           <div id="comparator-container"></div>
         </section>
 
         <!-- TAB 3: Grounded AI Copilot Chat -->
-        <section id="tab-copilot" class="view-section" role="tabpanel" aria-labelledby="tab-copilot">
+        <section id="tab-copilot" class="view-section" role="tabpanel" aria-labelledby="tab-btn-copilot" tabindex="0">
           <div id="copilot-container"></div>
         </section>
 
         <!-- TAB 4: Action Center & Letters Suite -->
-        <section id="tab-action" class="view-section" role="tabpanel" aria-labelledby="tab-action">
+        <section id="tab-action" class="view-section" role="tabpanel" aria-labelledby="tab-btn-action" tabindex="0">
           <div id="action-container"></div>
         </section>
       </main>
@@ -205,11 +208,33 @@ class LexiGuardApp {
   }
 
   bindGlobalEvents() {
-    // Navigation Tabs
-    document.querySelectorAll('.nav-tabs .tab-btn').forEach((btn) => {
+    // Navigation Tabs with Arrow Key Roving Focus
+    const tabButtons = Array.from(document.querySelectorAll('.nav-tabs .tab-btn'));
+    tabButtons.forEach((btn, index) => {
       btn.addEventListener('click', (e) => {
         const tab = e.currentTarget.getAttribute('data-tab');
         if (tab) this.switchTab(tab);
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        let targetIndex = -1;
+        if (e.key === 'ArrowRight') {
+          targetIndex = (index + 1) % tabButtons.length;
+        } else if (e.key === 'ArrowLeft') {
+          targetIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+        } else if (e.key === 'Home') {
+          targetIndex = 0;
+        } else if (e.key === 'End') {
+          targetIndex = tabButtons.length - 1;
+        }
+
+        if (targetIndex !== -1) {
+          e.preventDefault();
+          const targetBtn = tabButtons[targetIndex];
+          targetBtn.focus();
+          const tab = targetBtn.getAttribute('data-tab');
+          if (tab) this.switchTab(tab);
+        }
       });
     });
 
@@ -219,6 +244,15 @@ class LexiGuardApp {
         const key = e.currentTarget.getAttribute('data-sample-key');
         if (key) this.loadSample(key);
       });
+    });
+
+    // Accessible File Upload Keyboard Trigger
+    const fileUploadLabel = document.querySelector('label[for="file-upload-input"]');
+    fileUploadLabel?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('file-upload-input')?.click();
+      }
     });
 
     // File Upload Handler
@@ -243,6 +277,7 @@ class LexiGuardApp {
         await this.runAnalysis();
         this.triggerConfetti();
         showToast(`Loaded ${file.name}`, 'success', 2500);
+        announceA11y(`Uploaded and analyzed file: ${file.name}`);
       };
       reader.onerror = () => {
         showToast('Failed to read file. Please try again.', 'error', 3000);
@@ -273,6 +308,7 @@ class LexiGuardApp {
 
   async triggerReanalysis() {
     if (this.isAnalyzing) return;
+    announceA11y('Re-evaluating contract with AI analysis...');
     const titleInp = document.getElementById('doc-title-input');
     const textInp = document.getElementById('main-doc-textarea');
     if (titleInp) this.documentTitle = titleInp.value;
@@ -283,6 +319,9 @@ class LexiGuardApp {
   }
 
   triggerConfetti() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return; // Respect user preference for reduced vestibular motion
+    }
     if (typeof window.confetti === 'function') {
       window.confetti({
         particleCount: 45,
@@ -301,7 +340,9 @@ class LexiGuardApp {
     this.documentText = doc.text;
 
     document.querySelectorAll('.sample-chip').forEach((c) => {
-      c.classList.toggle('active', c.getAttribute('data-sample-key') === key);
+      const isSelected = c.getAttribute('data-sample-key') === key;
+      c.classList.toggle('active', isSelected);
+      c.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
     });
 
     const titleInp = document.getElementById('doc-title-input');
@@ -310,7 +351,9 @@ class LexiGuardApp {
     if (textInp) textInp.value = this.documentText;
 
     await this.runAnalysis();
-    showToast(`Loaded sample: ${doc.title.split(' (')[0]}`, 'info', 2000);
+    const shortTitle = doc.title.split(' (')[0];
+    showToast(`Loaded sample: ${shortTitle}`, 'info', 2000);
+    announceA11y(`Loaded sample: ${shortTitle}`);
   }
 
   async runAnalysis() {
@@ -323,6 +366,8 @@ class LexiGuardApp {
       renderContractComparator(document.getElementById('comparator-container'));
       renderQACopilot(document.getElementById('copilot-container'), this.documentText);
       renderActionCenter(document.getElementById('action-container'), this.documentTitle, this.analysis);
+
+      announceA11y(`Contract analysis complete. Risk score: ${this.analysis.riskScore} out of 100, ${this.analysis.riskCategory}.`);
     } catch (err) {
       console.error('[LexiGuardApp] Error during analysis pipeline:', err);
       showToast('Error analyzing document. Check console for details.', 'error', 3500);
@@ -333,23 +378,35 @@ class LexiGuardApp {
 
   switchTab(tabId) {
     this.activeTab = tabId;
+    let activeLabel = tabId;
+
     document.querySelectorAll('.nav-tabs .tab-btn').forEach((btn) => {
       const isActive = btn.getAttribute('data-tab') === tabId;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      btn.setAttribute('tabindex', isActive ? '0' : '-1');
+      if (isActive) {
+        activeLabel = btn.querySelector('span')?.textContent || tabId;
+      }
     });
 
     document.querySelectorAll('.view-section').forEach((sec) => {
       sec.classList.toggle('active', sec.id === `tab-${tabId}`);
     });
+
+    announceA11y(`Switched to ${activeLabel} view`);
   }
 
   openPrivacyModal() {
     const container = document.getElementById('modal-container');
     if (!container) return;
+    const triggerEl = document.activeElement;
     container.innerHTML = '';
     const modal = createPrivacyModal({
-      onClose: () => { container.innerHTML = ''; }
+      onClose: () => {
+        container.innerHTML = '';
+        triggerEl?.focus?.();
+      }
     });
     container.appendChild(modal);
   }
@@ -357,9 +414,13 @@ class LexiGuardApp {
   openApiKeyModal() {
     const container = document.getElementById('modal-container');
     if (!container) return;
+    const triggerEl = document.activeElement;
     container.innerHTML = '';
     const modal = createApiKeyModal({
-      onClose: () => { container.innerHTML = ''; },
+      onClose: () => {
+        container.innerHTML = '';
+        triggerEl?.focus?.();
+      },
       onKeyUpdated: () => this.renderHeader()
     });
     container.appendChild(modal);

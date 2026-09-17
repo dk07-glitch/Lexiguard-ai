@@ -43,6 +43,8 @@ export function renderRiskOverview(container, analysis) {
 
       <!-- Accessible SVG Semi-Circle Meter -->
       <svg class="gauge-svg" viewBox="0 0 200 110" role="meter" aria-valuenow="${score}" aria-valuemin="0" aria-valuemax="100" aria-label="Risk score: ${score} out of 100">
+        <title>Legal Risk Score: ${score} out of 100 (${escapeHtml(category)})</title>
+        <desc>Semi-circular visual gauge showing overall legal contract risk of ${score} out of 100, classified as ${escapeHtml(category)}.</desc>
         <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
         <path class="gauge-value" d="M 20 100 A 80 80 0 0 1 180 100"
               style="stroke: ${colorVar}; stroke-dasharray: ${arcLength}; stroke-dashoffset: ${offset};" />

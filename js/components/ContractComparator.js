@@ -51,7 +51,7 @@ Tenant shall be responsible for the first $350 of all maintenance and repair cos
           <!-- Document A Draft -->
           <div class="glass-panel" style="display:flex; flex-direction:column;">
             <div class="panel-header">
-              <span class="panel-title">Original Draft (Version A)</span>
+              <label for="comp-doc-a" class="panel-title" style="cursor:pointer;">Original Draft (Version A)</label>
               <span class="risk-badge badge-low" style="font-size:0.7rem;">Baseline</span>
             </div>
             <textarea id="comp-doc-a" class="doc-textarea" style="border:none; border-radius:0; height:340px;" aria-label="Original Contract Text (Version A)">${escapeHtml(docA)}</textarea>
@@ -60,7 +60,7 @@ Tenant shall be responsible for the first $350 of all maintenance and repair cos
           <!-- Document B Draft -->
           <div class="glass-panel" style="display:flex; flex-direction:column;">
             <div class="panel-header">
-              <span class="panel-title">Proposed Counter-Offer (Version B)</span>
+              <label for="comp-doc-b" class="panel-title" style="cursor:pointer;">Proposed Counter-Offer (Version B)</label>
               <span class="risk-badge badge-high" style="font-size:0.7rem;">Modified Terms</span>
             </div>
             <textarea id="comp-doc-b" class="doc-textarea" style="border:none; border-radius:0; height:340px;" aria-label="Proposed Counter Contract Text (Version B)">${escapeHtml(docB)}</textarea>

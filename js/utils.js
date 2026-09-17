@@ -131,4 +131,85 @@ export function showToast(message, type = 'info', durationMs = 3500) {
     toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
     setTimeout(() => toast.remove(), 300);
   }, durationMs);
+
+  // Also announce to screen readers via ARIA live region
+  announceA11y(message);
+}
+
+/**
+ * Announces dynamic status updates to screen readers via the global ARIA live region.
+ * @param {string} message - Message text to announce
+ */
+export function announceA11y(message) {
+  if (typeof document === 'undefined') return;
+  const announcer = document.getElementById('a11y-announcer');
+  if (announcer && message) {
+    // Clear first to guarantee announcement if message repeats
+    announcer.textContent = '';
+    setTimeout(() => {
+      announcer.textContent = message;
+    }, 50);
+  }
+}
+
+/**
+ * Traps keyboard focus within an accessible modal container and handles Escape key.
+ * @param {HTMLElement} containerEl - Modal container element
+ * @param {Function} [onEscape] - Optional callback when Escape key is pressed
+ * @returns {Function} Cleanup function to remove event listeners
+ */
+export function trapFocus(containerEl, onEscape) {
+  if (!containerEl) return () => {};
+
+  const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  const getFocusableElements = () => {
+    return Array.from(containerEl.querySelectorAll(focusableSelector))
+      .filter((el) => el.offsetParent !== null || el.offsetWidth > 0 || el.offsetHeight > 0);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape' && typeof onEscape === 'function') {
+      e.preventDefault();
+      onEscape();
+      return;
+    }
+
+    if (e.key !== 'Tab') return;
+
+    const focusable = getFocusableElements();
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first || !containerEl.contains(document.activeElement)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last || !containerEl.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  containerEl.addEventListener('keydown', handleKeyDown);
+
+  // Automatically focus first focusable element
+  requestAnimationFrame(() => {
+    const focusable = getFocusableElements();
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    }
+  });
+
+  return () => {
+    containerEl.removeEventListener('keydown', handleKeyDown);
+  };
 }
