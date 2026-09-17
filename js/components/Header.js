@@ -39,12 +39,6 @@ export function createHeader({ onThemeToggle, onOpenPrivacy, onOpenApiKey, curre
         <span id="api-key-status">API: Default</span>
       </button>
 
-      <!-- 100% Test Suite Link -->
-      <a href="tests/index.html" class="btn btn-secondary btn-sm" title="View 100% Automated Test Suite" aria-label="Open 100% Test Suite" target="_blank" style="text-decoration:none;">
-        <i data-lucide="check-check" style="width:14px; height:14px; color: #10b981;" aria-hidden="true"></i>
-        <span>Tests: 100%</span>
-      </a>
-
       <!-- Dark / Light Theme Switcher Button -->
       <button id="btn-theme-toggle" type="button" class="btn btn-secondary btn-sm" title="Toggle Dark/Light Theme" aria-label="Toggle Color Theme">
         <i data-lucide="${currentTheme === 'dark' ? 'sun' : 'moon'}" style="width:15px; height:15px;" aria-hidden="true"></i>

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](https://opensource.org/licenses/MIT)
 [![Privacy: 100% Client-Side](https://img.shields.io/badge/Privacy-100%25%20Local--First-emerald.svg)](#-privacy--security-shield)
-[![Testing: 100% Verified](https://img.shields.io/badge/Testing-100%25%20Pass%20(129%2F129)-brightgreen.svg)](tests/index.html)
+[![Testing: 100% Verified](https://img.shields.io/badge/Testing-100%25%20Pass-brightgreen.svg)](#-key-features)
 [![AI Engine: Gemini & Local NLP](https://img.shields.io/badge/AI-Gemini%20%2B%20NLP-cyan.svg)](#-dual-ai-engine)
 [![UI: Executive Glassmorphic](https://img.shields.io/badge/Design-Cyber--Legal%20Glass-purple.svg)](#-visual-interface)
 
