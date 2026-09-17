@@ -4,7 +4,7 @@
  * @module exporter
  */
 
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, sanitizeFileName } from '../utils.js';
 
 export class Exporter {
   /**
@@ -69,6 +69,11 @@ constitute formal legal counsel. Always consult a licensed attorney.
   printConsultPack(docTitle, analysis) {
     const printWindow = window.open('', '_blank', 'width=800,height=900');
     if (!printWindow) return;
+    try {
+      printWindow.opener = null;
+    } catch {
+      // Ignore if browser restricts opener mutation
+    }
 
     const clauses = Array.isArray(analysis?.clauses) ? analysis.clauses : [];
 
@@ -129,11 +134,12 @@ constitute formal legal counsel. Always consult a licensed attorney.
    */
   downloadFile(filename, content, mimeType = 'text/plain;charset=utf-8') {
     try {
+      const safeName = sanitizeFileName(filename, 'document.txt');
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename;
+      link.download = safeName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

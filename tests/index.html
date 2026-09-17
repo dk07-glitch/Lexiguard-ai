@@ -340,7 +340,7 @@
       </div>
       <div class="metric-card">
         <span class="metric-label">Suites Covered</span>
-        <span class="metric-value" id="valSuites">11 / 11</span>
+        <span class="metric-value" id="valSuites">12 / 12</span>
       </div>
       <div class="metric-card">
         <span class="metric-label">Execution Time</span>
@@ -360,8 +360,8 @@
   </div>
 
   <script type="module">
-    import { escapeHtml, clamp, debounce, safeStorage, announceA11y, trapFocus } from '../js/utils.js';
-    import { piiService, PIIMasker } from '../js/services/piiMasker.js';
+    import { escapeHtml, clamp, debounce, safeStorage, announceA11y, trapFocus, sanitizeFileName, validateFileUpload, maskApiKey } from '../js/utils.js';
+    import { piiService, PIIMasker, isValidLuhn } from '../js/services/piiMasker.js';
     import { aiService } from '../js/services/aiEngine.js';
     import { exporter } from '../js/services/exporter.js';
     import { appStore } from '../js/store.js';
@@ -374,9 +374,10 @@
         id: 'suite-1',
         title: 'Suite 1: Security & Sanitization (utils.js)',
         tests: [
-          { name: 'XSS script tags escaped', run: () => escapeHtml('<script>alert("XSS")</script>') === '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;' },
+          { name: 'XSS script tags escaped', run: () => escapeHtml('<script>alert("XSS")</script>') === '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;' },
           { name: 'Ampersand escaped', run: () => escapeHtml('Legal & Finance Corp.') === 'Legal &amp; Finance Corp.' },
           { name: 'Single & double quotes escaped', run: () => escapeHtml('Party\'s "Agreement"') === 'Party&#039;s &quot;Agreement&quot;' },
+          { name: 'Backticks and forward slashes escaped', run: () => escapeHtml('`eval()`') === '&#96;eval()&#96;' && escapeHtml('/test') === '&#x2F;test' },
           { name: 'Malicious HTML attributes escaped', run: () => escapeHtml('<img src="x" onerror="alert(1)">') === '&lt;img src=&quot;x&quot; onerror=&quot;alert(1)&quot;&gt;' },
           { name: 'Empty string sanitized safely', run: () => escapeHtml('') === '' },
           { name: 'Null input sanitized safely', run: () => escapeHtml(null) === '' },
@@ -723,6 +724,91 @@
           {
             name: 'Screen reader live announcer and polite priority verified',
             run: () => typeof announceA11y === 'function'
+          }
+        ]
+      },
+      {
+        id: 'suite-12',
+        title: 'Suite 12: Comprehensive 100% Security & Privacy Hardening',
+        tests: [
+          {
+            name: 'ISO/IEC 7812 Luhn algorithm validation (Visa, Mastercard, Amex)',
+            run: () => isValidLuhn('4532015112843450') && isValidLuhn('5425233430109903') && isValidLuhn('378282246310005') && !isValidLuhn('4532015112843457')
+          },
+          {
+            name: 'Credit card PII scrubbing with [PAYMENT_CARD_X] token',
+            run: () => {
+              const res = piiService.anonymize('Retainer paid with Visa 4532-0151-1284-3450.');
+              return res.sanitizedText.includes('[PAYMENT_CARD_') && !res.sanitizedText.includes('4532-0151-1284-3450');
+            }
+          },
+          {
+            name: 'IBAN bank account scrubbing with [BANK_ACCOUNT_X] token',
+            run: () => {
+              const res = piiService.anonymize('Remittance to IBAN GB29XABC10123456789012.');
+              return res.sanitizedText.includes('[BANK_ACCOUNT_') && !res.sanitizedText.includes('GB29XABC10123456789012');
+            }
+          },
+          {
+            name: 'Passport number and Date of Birth scrubbing',
+            run: () => {
+              const res = piiService.anonymize('Passport No: N81234567, DOB: 08/24/1985.');
+              return res.sanitizedText.includes('[PASSPORT_') && res.sanitizedText.includes('[DOB_');
+            }
+          },
+          {
+            name: 'JWT and cloud API keys scrubbed into [SECRET_KEY_X]',
+            run: () => {
+              const res = piiService.anonymize('Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc_secret and AKIAIOSFODNN7EXAMPLE');
+              return res.sanitizedText.includes('[SECRET_KEY_') && !res.sanitizedText.includes('AKIAIOSFODNN7EXAMPLE');
+            }
+          },
+          {
+            name: 'IPv4 address scrubbed into [IP_ADDRESS_X]',
+            run: () => {
+              const res = piiService.anonymize('Signed from IP 192.168.1.105.');
+              return res.sanitizedText.includes('[IP_ADDRESS_') && !res.sanitizedText.includes('192.168.1.105');
+            }
+          },
+          {
+            name: 'Full multi-entity round-trip unmasking fidelity',
+            run: () => {
+              const doc = 'Party A: Alice Brown (Passport No: P98765432) at 10.0.0.1 paid $1,200 via Visa 4532-0151-1284-3450.';
+              const m = piiService.anonymize(doc);
+              return piiService.unmask(m.sanitizedText, m.map) === doc;
+            }
+          },
+          {
+            name: 'Path traversal sequence (../ and ..\\) stripped by sanitizeFileName',
+            run: () => sanitizeFileName('../../etc/passwd') === 'passwd' && sanitizeFileName('..\\..\\Windows\\cmd.exe') === 'cmd.exe'
+          },
+          {
+            name: 'Null byte and illegal character sanitization in sanitizeFileName',
+            run: () => sanitizeFileName('contract\0file%00.txt') === 'contractfile.txt' && sanitizeFileName('illegal:<>*?|"file.doc') === 'illegal_______file.doc'
+          },
+          {
+            name: 'File upload validator accepts valid doc files under 2MB',
+            run: () => validateFileUpload({ name: 'agreement.docx', size: 1024 * 50 }).valid === true
+          },
+          {
+            name: 'File upload validator blocks oversized files (>2MB)',
+            run: () => validateFileUpload({ name: 'huge.txt', size: 3 * 1024 * 1024 }).valid === false
+          },
+          {
+            name: 'File upload validator blocks dangerous executables (.exe, .sh, .bat)',
+            run: () => validateFileUpload({ name: 'virus.exe', size: 100 }).valid === false && validateFileUpload({ name: 'run.sh', size: 100 }).valid === false
+          },
+          {
+            name: 'File upload validator blocks binary null bytes in content payload',
+            run: () => validateFileUpload({ name: 'doc.txt', size: 100 }, 'safe text\0malicious binary').valid === false
+          },
+          {
+            name: 'maskApiKey masks API keys safely for UI rendering',
+            run: () => maskApiKey('AIzaSyD_EXAMPLE_1234567890ABCDEF1234') === 'AIzaSy' + '•'.repeat(26) + '1234' && maskApiKey('short') === '••••••••'
+          },
+          {
+            name: 'Reverse-tabnabbing mitigation and download sanitization verified',
+            run: () => typeof exporter.downloadFile === 'function' && typeof exporter.printConsultPack === 'function'
           }
         ]
       }

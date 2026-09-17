@@ -15,6 +15,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')
+        # Defense-in-Depth Security Headers
+        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';")
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        self.send_header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
         super().end_headers()
 
 if __name__ == '__main__':

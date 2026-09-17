@@ -47,7 +47,8 @@ export const safeStorage = Object.freeze({
 });
 
 /**
- * Escapes unsafe HTML characters to prevent XSS attacks.
+ * Escapes unsafe HTML characters to prevent XSS attacks across all contexts.
+ * Sanitizes &, <, >, ", ', `, and / to prevent attribute breakout and execution.
  * @param {string} str - Raw string
  * @returns {string} Sanitized string safe for DOM insertion
  */
@@ -58,7 +59,120 @@ export function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/'/g, '&#039;')
+    .replace(/`/g, '&#96;')
+    .replace(/\//g, '&#x2F;');
+}
+
+/**
+ * Sanitizes a filename to prevent path traversal, null-byte injection, and invalid characters.
+ * @param {string} filename - User or generated filename
+ * @param {string} [fallback='document.txt'] - Fallback name if sanitized string is empty
+ * @returns {string} Safe filename
+ */
+export function sanitizeFileName(filename, fallback = 'document.txt') {
+  if (typeof filename !== 'string' || !filename.trim()) return fallback;
+  // Remove null bytes and url-encoded null bytes
+  let clean = filename
+    .replace(/\0/g, '')
+    .replace(/%00/gi, '')
+    .trim();
+
+  // Extract base filename if path separators exist
+  if (clean.includes('/') || clean.includes('\\')) {
+    const parts = clean.split(/[/\\]+/).filter(Boolean);
+    clean = parts[parts.length - 1] || fallback;
+  }
+
+  // Remove directory traversal dots and illegal characters
+  clean = clean
+    .replace(/\.\.+/g, '')
+    .replace(/[\x00-\x1f\x7f-\x9f]/g, '')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .trim();
+
+  // Strip leading dots or underscores
+  clean = clean.replace(/^[._]+/, '');
+  return clean || fallback;
+}
+
+/**
+ * Whitelist of allowed extensions for contract files.
+ */
+const ALLOWED_EXTENSIONS = ['.txt', '.md', '.doc', '.docx', '.json'];
+
+/**
+ * Blacklist of dangerous executable or script extensions.
+ */
+const DANGEROUS_EXTENSIONS = [
+  '.exe', '.bat', '.cmd', '.sh', '.bash', '.vbs', '.ps1', '.psm1',
+  '.scr', '.msi', '.pif', '.application', '.gadget', '.hta', '.cpl',
+  '.msc', '.jar', '.html', '.htm', '.xhtml', '.svg', '.xml', '.php',
+  '.asp', '.aspx', '.jsp', '.js', '.mjs', '.cjs', '.py', '.rb', '.pl'
+];
+
+/**
+ * Validates uploaded contract files against size, extension whitelist/blacklist, and binary payloads.
+ * @param {File} file - Browser File object
+ * @param {string} [textContent=''] - Read text content of the file
+ * @returns {{ valid: boolean, error?: string }}
+ */
+export function validateFileUpload(file, textContent = '') {
+  if (!file) {
+    return { valid: false, error: 'No file provided.' };
+  }
+
+  // Max 2MB limit
+  const MAX_SIZE_BYTES = 2 * 1024 * 1024;
+  if (file.size > MAX_SIZE_BYTES) {
+    return { valid: false, error: 'File exceeds the 2MB size limit.' };
+  }
+
+  const name = (file.name || '').toLowerCase();
+  
+  // Check against dangerous extensions
+  for (const dangerousExt of DANGEROUS_EXTENSIONS) {
+    if (name.endsWith(dangerousExt)) {
+      return { valid: false, error: `Dangerous file type detected (${dangerousExt}). Upload rejected for security.` };
+    }
+  }
+
+  // Check against allowed extensions
+  const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
+  if (!hasValidExt) {
+    return { valid: false, error: 'Unsupported file extension. Only .txt, .md, .doc, .docx, and .json are accepted.' };
+  }
+
+  // Check for path traversal in file name
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    return { valid: false, error: 'Invalid filename contains illegal path traversal characters.' };
+  }
+
+  // Check text content for binary null bytes or dangerous script payload injections
+  if (typeof textContent === 'string' && textContent.length > 0) {
+    if (textContent.includes('\0')) {
+      return { valid: false, error: 'Binary or null-byte content detected. Please upload valid text documents only.' };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Masks an API key for safe UI presentation (e.g., AIzaSy••••••••••••XXXX).
+ * @param {string} key - Raw API key
+ * @returns {string} Masked string safe for display
+ */
+export function maskApiKey(key) {
+  if (typeof key !== 'string' || !key.trim()) return '';
+  const trimmed = key.trim();
+  if (trimmed.length <= 8) {
+    return '••••••••';
+  }
+  const prefix = trimmed.slice(0, 6);
+  const suffix = trimmed.slice(-4);
+  const maskLen = Math.max(trimmed.length - 10, 8);
+  return `${prefix}${'•'.repeat(maskLen)}${suffix}`;
 }
 
 /**

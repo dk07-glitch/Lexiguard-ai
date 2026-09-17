@@ -5,8 +5,8 @@
  */
 
 import fs from 'fs';
-import { escapeHtml, clamp, debounce, safeStorage, announceA11y, trapFocus } from '../js/utils.js';
-import { piiService, PIIMasker } from '../js/services/piiMasker.js';
+import { escapeHtml, clamp, debounce, safeStorage, announceA11y, trapFocus, sanitizeFileName, validateFileUpload, maskApiKey } from '../js/utils.js';
+import { piiService, PIIMasker, isValidLuhn } from '../js/services/piiMasker.js';
 import { aiService } from '../js/services/aiEngine.js';
 import { exporter } from '../js/services/exporter.js';
 import { appStore } from '../js/store.js';
@@ -43,9 +43,11 @@ console.log('================================================================\n'
 // SUITE 1: Security & Sanitization (utils.js)
 // ------------------------------------------------------------------
 console.log('[Test Suite 1: Security & Sanitization (utils.js)]');
-assertEquals(escapeHtml('<script>alert("XSS")</script>'), '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;', 'XSS script tags escaped');
+assertEquals(escapeHtml('<script>alert("XSS")</script>'), '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;', 'XSS script tags escaped');
 assertEquals(escapeHtml('Legal & Finance Corp.'), 'Legal &amp; Finance Corp.', 'Ampersand escaped');
 assertEquals(escapeHtml('Party\'s "Agreement"'), 'Party&#039;s &quot;Agreement&quot;', 'Single and double quotes escaped');
+assertEquals(escapeHtml('`eval()`'), '&#96;eval()&#96;', 'Backticks escaped');
+assertEquals(escapeHtml('/api/v1/user'), '&#x2F;api&#x2F;v1&#x2F;user', 'Forward slashes escaped');
 assertEquals(escapeHtml('<img src="x" onerror="alert(1)">'), '&lt;img src=&quot;x&quot; onerror=&quot;alert(1)&quot;&gt;', 'Malicious HTML attributes escaped');
 assertEquals(escapeHtml(''), '', 'Empty string sanitized safely');
 assertEquals(escapeHtml(null), '', 'Null input sanitized safely');
@@ -394,6 +396,127 @@ assert(actionJs.includes('for="inp-landlord"') && actionJs.includes('for="inp-am
 const privacyJs = fs.readFileSync(new URL('../js/components/PrivacyShield.js', import.meta.url), 'utf-8');
 assert(privacyJs.includes("'role', 'dialog'") && privacyJs.includes("'aria-modal', 'true'"), 'Privacy modal implements WAI-ARIA dialog semantics');
 assert(privacyJs.includes('trapFocus'), 'Privacy modal enforces keyboard focus trapping');
+
+// ------------------------------------------------------------------
+// SUITE 12: Comprehensive 100% Security & Privacy Hardening
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 12: Comprehensive 100% Security & Privacy Hardening]');
+
+// 1. ISO/IEC 7812 Luhn Algorithm Validation
+assert(isValidLuhn('4532015112843450'), 'Valid Visa card passes Luhn check');
+assert(isValidLuhn('5425233430109903'), 'Valid Mastercard passes Luhn check');
+assert(isValidLuhn('378282246310005'), 'Valid American Express passes Luhn check');
+assert(!isValidLuhn('4532015112843457'), 'Invalid checksum card rejected by Luhn check');
+assert(!isValidLuhn('12345'), 'Too short number rejected by Luhn (<13 digits)');
+assert(!isValidLuhn('abc1234567890123'), 'Non-numeric string handled safely by Luhn');
+
+// 2. High-Entropy Credit Card PII Tokenization
+const cardDoc = 'Client retainer paid with Visa 4532-0151-1284-3450 on file.';
+const maskedCard = piiService.anonymize(cardDoc);
+assertContains(maskedCard.sanitizedText, '[PAYMENT_CARD_', 'Credit card number anonymized into PAYMENT_CARD token');
+assert(!maskedCard.sanitizedText.includes('4532-0151-1284-3450'), 'Raw credit card number wiped from sanitized output');
+
+// 3. IBAN / Bank Routing Tokenization
+const ibanDoc = 'Wire remittance to IBAN GB29XABC10123456789012 for settlement.';
+const maskedIban = piiService.anonymize(ibanDoc);
+assertContains(maskedIban.sanitizedText, '[BANK_ACCOUNT_', 'IBAN anonymized into BANK_ACCOUNT token');
+assert(!maskedIban.sanitizedText.includes('GB29XABC10123456789012'), 'Raw IBAN wiped from sanitized output');
+
+// 4. Passport & DOB Tokenization
+const identityDoc = 'Signatory: John Smith, Passport No: N81234567, DOB: 08/24/1985.';
+const maskedIdentity = piiService.anonymize(identityDoc);
+assertContains(maskedIdentity.sanitizedText, '[PASSPORT_', 'Passport number tokenized with PASSPORT prefix');
+assertContains(maskedIdentity.sanitizedText, '[DOB_', 'Date of birth tokenized with DOB prefix');
+assert(!maskedIdentity.sanitizedText.includes('N81234567'), 'Raw passport number scrubbed');
+assert(!maskedIdentity.sanitizedText.includes('08/24/1985'), 'Raw DOB scrubbed');
+
+// 5. Secret Key, JWT & API Key Anonymization
+const jwtDoc = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+const maskedJwt = piiService.anonymize(jwtDoc);
+assertContains(maskedJwt.sanitizedText, '[SECRET_KEY_', 'JWT authentication token masked into SECRET_KEY token');
+assert(!maskedJwt.sanitizedText.includes('eyJhbGciOi'), 'Raw JWT scrubbed from sanitized output');
+
+const awsKeyDoc = 'AWS credentials: api_key = "AKIAIOSFODNN7EXAMPLE" in config.';
+const maskedAws = piiService.anonymize(awsKeyDoc);
+assertContains(maskedAws.sanitizedText, '[SECRET_KEY_', 'Cloud API key masked into SECRET_KEY token');
+assert(!maskedAws.sanitizedText.includes('AKIAIOSFODNN7EXAMPLE'), 'Raw AWS key scrubbed');
+
+// 6. IP Address Anonymization
+const ipDoc = 'Server logged connection from origin IP 192.168.1.105 during signing.';
+const maskedIp = piiService.anonymize(ipDoc);
+assertContains(maskedIp.sanitizedText, '[IP_ADDRESS_', 'IPv4 address tokenized with IP_ADDRESS prefix');
+assert(!maskedIp.sanitizedText.includes('192.168.1.105'), 'Raw IP address scrubbed');
+
+// 7. Full Multi-Entity Round-Trip Reversibility
+const fullPiiDoc = 'Party A: Alice Brown (Passport No: P98765432) at 10.0.0.1 paid $1,200 via Visa 4532-0151-1284-3450.';
+const maskedFull = piiService.anonymize(fullPiiDoc);
+assert(maskedFull.redactsCount >= 4, `Multi-entity document redacted ${maskedFull.redactsCount} entities`);
+const unmaskedFull = piiService.unmask(maskedFull.sanitizedText, maskedFull.map);
+assertEquals(unmaskedFull, fullPiiDoc, 'Multi-entity round-trip unmasking produces 100% identical original');
+
+// 8. Filename Sanitization & Path Traversal Defense
+assertEquals(sanitizeFileName('../../etc/passwd'), 'passwd', 'Path traversal sequence ../ stripped');
+assertEquals(sanitizeFileName('..\\..\\Windows\\System32\\cmd.exe'), 'cmd.exe', 'Windows path traversal ..\\ stripped');
+assertEquals(sanitizeFileName('contract\0file%00.txt'), 'contractfile.txt', 'Null bytes (%00, \\0) stripped from filename');
+assertEquals(sanitizeFileName('illegal:<>*?|"file.doc'), 'illegal_______file.doc', 'Illegal filesystem characters sanitized to underscore');
+assertEquals(sanitizeFileName('', 'custom_fallback.txt'), 'custom_fallback.txt', 'Empty filename uses safe fallback');
+
+// 9. File Upload Validation Suite (validateFileUpload)
+const validFile = { name: 'vendor_agreement.docx', size: 1024 * 50 };
+assert(validateFileUpload(validFile).valid, 'Valid DOCX document under 2MB accepted');
+
+const largeFile = { name: 'huge_contract.txt', size: 3 * 1024 * 1024 };
+const largeCheck = validateFileUpload(largeFile);
+assert(!largeCheck.valid && largeCheck.error.includes('2MB'), 'File exceeding 2MB rejected with clear error');
+
+const exeFile = { name: 'malware.exe', size: 1024 };
+const exeCheck = validateFileUpload(exeFile);
+assert(!exeCheck.valid && exeCheck.error.includes('Dangerous'), 'Executable .exe file rejected by extension blacklist');
+
+const shFile = { name: 'script.sh', size: 500 };
+assert(!validateFileUpload(shFile).valid, 'Shell script rejected by extension blacklist');
+
+const traversalFile = { name: '../../boot.ini.txt', size: 500 };
+assert(!validateFileUpload(traversalFile).valid, 'Path traversal in filename rejected');
+
+const nullContentCheck = validateFileUpload(validFile, 'Standard agreement\0malicious binary polyglot');
+assert(!nullContentCheck.valid && nullContentCheck.error.includes('null-byte'), 'Binary null bytes in text payload rejected');
+
+// 10. API Key Masking Utility (maskApiKey)
+assertEquals(maskApiKey('AIzaSyD_EXAMPLE_1234567890ABCDEF1234'), 'AIzaSy' + '•'.repeat(26) + '1234', 'API Key masked securely preserving only prefix and 4-digit suffix');
+assertEquals(maskApiKey('short'), '••••••••', 'Short key masked entirely');
+assertEquals(maskApiKey(''), '', 'Empty key returns empty string');
+
+// 11. Content Security Policy (CSP) & Defense-in-Depth HTTP Headers
+const serverPy = fs.readFileSync(new URL('../server.py', import.meta.url), 'utf-8');
+assert(serverPy.includes("Content-Security-Policy"), 'server.py enforces Content-Security-Policy header');
+assert(serverPy.includes("default-src 'self'"), 'CSP default-src restricts to self');
+assert(serverPy.includes("object-src 'none'"), 'CSP object-src none disables plugins');
+assert(serverPy.includes("X-Frame-Options', 'DENY'"), 'server.py enforces X-Frame-Options: DENY against clickjacking');
+assert(serverPy.includes("X-Content-Type-Options', 'nosniff'"), 'server.py enforces nosniff against MIME-confusion attacks');
+assert(serverPy.includes("Referrer-Policy', 'strict-origin-when-cross-origin'"), 'server.py enforces strict referrer policy');
+assert(serverPy.includes("Permissions-Policy"), 'server.py disables unneeded browser APIs via Permissions-Policy');
+assert(serverPy.includes("Cross-Origin-Opener-Policy', 'same-origin'"), 'server.py enforces Cross-Origin-Opener-Policy: same-origin');
+
+// 12. Static Hosting CSP Meta Tags in index.html
+const indexHtmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+assert(indexHtmlContent.includes('http-equiv="Content-Security-Policy"'), 'index.html includes static CSP meta tag');
+assert(indexHtmlContent.includes('http-equiv="X-Content-Type-Options"'), 'index.html includes X-Content-Type-Options meta tag');
+assert(indexHtmlContent.includes('name="referrer"'), 'index.html includes Referrer-Policy meta tag');
+
+// 13. Reverse-Tabnabbing Protection in Exporter
+const exporterJs = fs.readFileSync(new URL('../js/services/exporter.js', import.meta.url), 'utf-8');
+assert(exporterJs.includes('printWindow.opener = null'), 'exporter.js sets printWindow.opener = null for reverse-tabnabbing mitigation');
+assert(exporterJs.includes('sanitizeFileName'), 'exporter.js sanitizes download filenames');
+
+// 14. Special Regex Token Injection Immunity in ClauseLens.js
+const clauseLensJs = fs.readFileSync(new URL('../js/components/ClauseLens.js', import.meta.url), 'utf-8');
+assert(clauseLensJs.includes('() => replacement'), 'ClauseLens.js uses callback replacer to eliminate $ backreference expansion');
+
+// 15. Masked Preview & Secure Toggle in ApiKeyModal.js
+const modalJs = fs.readFileSync(new URL('../js/components/ApiKeyModal.js', import.meta.url), 'utf-8');
+assert(modalJs.includes('maskApiKey'), 'ApiKeyModal displays masked key preview');
+assert(modalJs.includes('btn-toggle-visibility'), 'ApiKeyModal provides password visibility toggle');
 
 // ------------------------------------------------------------------
 // Final Summary & Verification

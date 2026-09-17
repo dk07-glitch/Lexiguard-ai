@@ -14,7 +14,7 @@ import { renderQACopilot } from './components/QACopilot.js';
 import { renderActionCenter } from './components/ActionCenter.js';
 import { createPrivacyModal } from './components/PrivacyShield.js';
 import { createApiKeyModal } from './components/ApiKeyModal.js';
-import { escapeHtml, showToast, debounce, announceA11y } from './utils.js';
+import { escapeHtml, showToast, debounce, announceA11y, validateFileUpload, sanitizeFileName } from './utils.js';
 
 class LexiGuardApp {
   constructor() {
@@ -255,29 +255,40 @@ class LexiGuardApp {
       }
     });
 
-    // File Upload Handler
+    // File Upload Handler with Defense-in-Depth Validation
     const fileInp = document.getElementById('file-upload-input');
     fileInp?.addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      if (file.size > 2 * 1024 * 1024) {
-        showToast('File is too large. Please upload files under 2MB.', 'error', 3000);
+      const fileCheck = validateFileUpload(file);
+      if (!fileCheck.valid) {
+        showToast(fileCheck.error || 'Invalid file.', 'error', 3500);
+        fileInp.value = '';
         return;
       }
 
       const reader = new FileReader();
       reader.onload = async (evt) => {
-        this.documentTitle = file.name;
-        this.documentText = typeof evt.target?.result === 'string' ? evt.target.result : '';
+        const rawContent = typeof evt.target?.result === 'string' ? evt.target.result : '';
+        const contentCheck = validateFileUpload(file, rawContent);
+        if (!contentCheck.valid) {
+          showToast(contentCheck.error || 'Dangerous content detected.', 'error', 3500);
+          fileInp.value = '';
+          return;
+        }
+
+        const safeTitle = sanitizeFileName(file.name, 'uploaded_contract.txt');
+        this.documentTitle = safeTitle;
+        this.documentText = rawContent;
         const titleInp = document.getElementById('doc-title-input');
         const textInp = document.getElementById('main-doc-textarea');
         if (titleInp) titleInp.value = this.documentTitle;
         if (textInp) textInp.value = this.documentText;
         await this.runAnalysis();
         this.triggerConfetti();
-        showToast(`Loaded ${file.name}`, 'success', 2500);
-        announceA11y(`Uploaded and analyzed file: ${file.name}`);
+        showToast(`Loaded ${safeTitle}`, 'success', 2500);
+        announceA11y(`Uploaded and analyzed file: ${safeTitle}`);
       };
       reader.onerror = () => {
         showToast('Failed to read file. Please try again.', 'error', 3000);

@@ -144,7 +144,7 @@ function renderHighlightedText(text, clauses) {
       const snippet = escapeHtml(c.originalText.slice(0, 45));
       const hlClass = `hl-${c.type === 'high' ? 'high' : (c.type === 'medium' ? 'medium' : 'low')}`;
       const replacement = `<span id="hl-${c.id}" class="hl-clause ${hlClass}" title="${escapeHtml(c.title)}" role="mark">${snippet}...</span>`;
-      html = html.replace(snippet, replacement);
+      html = html.replace(snippet, () => replacement);
     }
   });
 
