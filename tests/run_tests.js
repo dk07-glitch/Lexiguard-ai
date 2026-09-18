@@ -554,6 +554,80 @@ assert(modalJs.includes('maskApiKey'), 'ApiKeyModal displays masked key preview'
 assert(modalJs.includes('btn-toggle-visibility'), 'ApiKeyModal provides password visibility toggle');
 
 // ------------------------------------------------------------------
+// SUITE 13: Exhaustive Code Quality, Null-Safety & Edge Case Resilience
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 13: Code Quality, Null-Safety & Edge Case Resilience]');
+
+// 1. escapeHtml Primitive & Null Safety
+assertEquals(escapeHtml(123), '', 'escapeHtml safely rejects non-string numbers');
+assertEquals(escapeHtml(null), '', 'escapeHtml returns empty string on null');
+assertEquals(escapeHtml(undefined), '', 'escapeHtml returns empty string on undefined');
+assertEquals(escapeHtml(false), '', 'escapeHtml safely rejects non-string booleans');
+
+// 2. clamp Range & Boundary Protection
+assertEquals(clamp(150, 0, 100), 100, 'clamp caps upper bound');
+assertEquals(clamp(-20, 0, 100), 0, 'clamp floors lower bound');
+assertEquals(clamp(NaN, 25, 75), 25, 'clamp guards against NaN input');
+assertEquals(clamp(50, 100, 0), 50, 'clamp auto-corrects inverted bounds (min > max)');
+
+// 3. debounce Cancellation & Defensive Guards
+const cancelFunc = debounce(() => {}, 100);
+assertEquals(typeof cancelFunc.cancel, 'function', 'debounce returns cancel handle');
+assertEquals(typeof debounce(null), 'function', 'debounce guards against non-function input');
+
+// 4. safeStorage Input Validation
+assertEquals(safeStorage.getItem(''), null, 'safeStorage.getItem rejects empty key');
+assertEquals(safeStorage.getItem(null), null, 'safeStorage.getItem rejects null key');
+
+// 5. sanitizeFileName Tricky Edge Cases
+assertEquals(sanitizeFileName('../../../etc/passwd'), 'passwd', 'sanitizeFileName handles deep traversal');
+assertEquals(sanitizeFileName('con\0tract.pdf'), 'contract.pdf', 'sanitizeFileName removes embedded null byte');
+assertEquals(sanitizeFileName('???:::***', 'fallback.txt'), 'fallback.txt', 'sanitizeFileName uses fallback on all-illegal filename');
+assertEquals(sanitizeFileName('', 'custom.txt'), 'custom.txt', 'sanitizeFileName uses custom fallback on empty string');
+
+// 6. maskApiKey Edge Cases
+assertEquals(maskApiKey(''), '', 'maskApiKey handles empty string');
+assertEquals(maskApiKey(null), '', 'maskApiKey handles null');
+assertEquals(maskApiKey('12345'), '••••••••', 'maskApiKey returns 8-dot mask for keys <= 8 chars');
+
+// 7. fastHash Edge Cases
+assertEquals(fastHash(''), '0', 'fastHash handles empty string');
+assertEquals(fastHash(null), '0', 'fastHash handles null');
+assertEquals(fastHash(123), '0', 'fastHash handles non-string');
+assertEquals(fastHash('LexiGuard AI ⚖️'), fastHash('LexiGuard AI ⚖️'), 'fastHash handles unicode and emojis deterministically');
+
+// 8. piiService Defensive Checks & Mask Alias
+const nullAnonymize = piiService.anonymize(null);
+assertEquals(nullAnonymize.sanitizedText, '', 'piiService.anonymize returns empty text on null');
+assertEquals(nullAnonymize.redactsCount, 0, 'piiService.anonymize returns 0 redactsCount on null');
+const maskAlias = piiService.mask('Party A: Alice Smith (Landlord)');
+assert(maskAlias.sanitizedText.includes('[PARTY_NAME_'), 'piiService.mask alias functions identically to anonymize');
+
+// 9. piiService.unmask Edge Cases
+assertEquals(piiService.unmask(null, {}), '', 'piiService.unmask handles null text');
+assertEquals(piiService.unmask('Some text', null), 'Some text', 'piiService.unmask handles null map');
+assertEquals(piiService.unmask('Some text', {}), 'Some text', 'piiService.unmask handles empty map');
+
+// 10. aiService Edge Cases
+const emptyDiff = aiService.compareDocuments('', '');
+assertEquals(emptyDiff.addedCount, 0, 'compareDocuments handles empty strings with 0 added');
+assertEquals(emptyDiff.removedCount, 0, 'compareDocuments handles empty strings with 0 removed');
+const emptyQ = await aiService.answerQuestion('', 'Document');
+assert(emptyQ.answer.includes('valid question'), 'answerQuestion requests valid question when query is empty');
+
+// 11. exporter Defensive Pack Generation
+const nullPack = exporter.generateLawyerConsultPack('', null);
+assert(nullPack.includes('DOCUMENT ANALYZED: Legal Contract Document'), 'generateLawyerConsultPack handles null analysis safely');
+assert(nullPack.includes('OVERALL RISK PROFILE: N/A [ASSESSED]'), 'generateLawyerConsultPack formats fallback risk profile safely');
+
+// 12. store Defensive Action & Subscriber Guards
+appStore.dispatch('UNKNOWN_ACTION_CODE', { dummy: true });
+assert(typeof appStore.getState() === 'object', 'store maintains state integrity after unknown action');
+const dummyUnsub = appStore.subscribe(null);
+assertEquals(typeof dummyUnsub, 'function', 'store.subscribe safely returns function on null listener');
+dummyUnsub();
+
+// ------------------------------------------------------------------
 // Final Summary & Verification
 // ------------------------------------------------------------------
 console.log('\n================================================================');

@@ -60,17 +60,24 @@ export function renderClauseLens(container, documentText, clauses = []) {
   const filterBtns = container.querySelectorAll('#clause-filter-tabs [data-filter]');
 
   function updateCardsOnly() {
-    const filteredClauses = clauses.filter((c) => {
+    const safeClauses = Array.isArray(clauses) ? clauses : [];
+    const filteredClauses = safeClauses.filter((c) => {
+      if (!c) return false;
+      const type = c.type || 'info';
       const matchesFilter =
         activeFilter === 'all' ||
-        (activeFilter === 'high' && c.type === 'high') ||
-        (activeFilter === 'medium' && c.type === 'medium') ||
-        (activeFilter === 'low' && (c.type === 'low' || c.type === 'info'));
+        (activeFilter === 'high' && type === 'high') ||
+        (activeFilter === 'medium' && type === 'medium') ||
+        (activeFilter === 'low' && (type === 'low' || type === 'info'));
+
+      const title = (c.title || '').toLowerCase();
+      const plainText = (c.plainText || '').toLowerCase();
+      const query = (searchQuery || '').toLowerCase();
 
       const matchesSearch =
-        !searchQuery ||
-        c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.plainText.toLowerCase().includes(searchQuery.toLowerCase());
+        !query ||
+        title.includes(query) ||
+        plainText.includes(query);
 
       return matchesFilter && matchesSearch;
     });
@@ -164,12 +171,13 @@ export function renderClauseLens(container, documentText, clauses = []) {
 
 function renderHighlightedText(text, clauses) {
   let html = escapeHtml(text || '');
+  const safeClauses = Array.isArray(clauses) ? clauses : [];
 
-  clauses.forEach((c) => {
-    if (c.originalText && c.originalText.length > 10) {
+  safeClauses.forEach((c) => {
+    if (c && c.originalText && c.originalText.length > 10) {
       const snippet = escapeHtml(c.originalText.slice(0, 45));
       const hlClass = `hl-${c.type === 'high' ? 'high' : (c.type === 'medium' ? 'medium' : 'low')}`;
-      const replacement = `<span id="hl-${c.id}" class="hl-clause ${hlClass}" title="${escapeHtml(c.title)}" role="mark">${snippet}...</span>`;
+      const replacement = `<span id="hl-${c.id || 'clause'}" class="hl-clause ${hlClass}" title="${escapeHtml(c.title || 'Clause')}" role="mark">${snippet}...</span>`;
       html = html.replace(snippet, () => replacement);
     }
   });

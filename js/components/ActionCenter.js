@@ -129,7 +129,8 @@ export function renderActionCenter(container, documentTitle, analysis) {
   updateView();
 }
 
-function renderTimelineView(timelineItems) {
+function renderTimelineView(timelineItems = []) {
+  const safeItems = Array.isArray(timelineItems) ? timelineItems : [];
   return `
     <h4 style="font-size:1.05rem; font-weight:800; margin-bottom:1.1rem; display:flex; align-items:center; gap:0.5rem;">
       <i data-lucide="clock" style="width:18px; height:18px; color:var(--accent-secondary);" aria-hidden="true"></i>
@@ -137,24 +138,26 @@ function renderTimelineView(timelineItems) {
     </h4>
 
     <div style="display:flex; flex-direction:column; gap:0.85rem;" role="list">
-      ${timelineItems.length === 0 ? `
+      ${safeItems.length === 0 ? `
         <div style="color:var(--text-muted); font-size:0.88rem;">No timeline events detected.</div>
-      ` : timelineItems.map((item) => `
+      ` : safeItems.map((item) => {
+        const type = item?.type || 'info';
+        return `
         <div style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.15rem; border-radius:var(--radius-sm); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);" role="listitem">
           <div style="display:flex; align-items:center; gap:0.85rem;">
-            <div style="width:38px; height:38px; border-radius:50%; background:var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}-bg); border:1px solid var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}-border); display:flex; align-items:center; justify-content:center; color:var(--risk-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'info' : 'low')}); font-weight:700;">
-              <i data-lucide="${item.type === 'deadline' ? 'alert-triangle' : (item.type === 'payment' ? 'credit-card' : 'calendar')}" style="width:16px; height:16px;" aria-hidden="true"></i>
+            <div style="width:38px; height:38px; border-radius:50%; background:var(--risk-${type === 'deadline' ? 'high' : (type === 'payment' ? 'info' : 'low')}-bg); border:1px solid var(--risk-${type === 'deadline' ? 'high' : (type === 'payment' ? 'info' : 'low')}-border); display:flex; align-items:center; justify-content:center; color:var(--risk-${type === 'deadline' ? 'high' : (type === 'payment' ? 'info' : 'low')}); font-weight:700;">
+              <i data-lucide="${type === 'deadline' ? 'alert-triangle' : (type === 'payment' ? 'credit-card' : 'calendar')}" style="width:16px; height:16px;" aria-hidden="true"></i>
             </div>
             <div>
-              <div style="font-weight:700; font-size:0.92rem;">${escapeHtml(item.title)}</div>
+              <div style="font-weight:700; font-size:0.92rem;">${escapeHtml(item?.title || 'Milestone')}</div>
               <div style="font-size:0.78rem; color:var(--text-muted);">Action required on schedule</div>
             </div>
           </div>
-          <span class="risk-badge badge-${item.type === 'deadline' ? 'high' : (item.type === 'payment' ? 'medium' : 'low')}">
-            ${escapeHtml(item.date)}
+          <span class="risk-badge badge-${type === 'deadline' ? 'high' : (type === 'payment' ? 'medium' : 'low')}">
+            ${escapeHtml(item?.date || 'Scheduled')}
           </span>
         </div>
-      `).join('')}
+      `;}).join('')}
     </div>
   `;
 }
@@ -232,8 +235,9 @@ function renderLetterGeneratorView() {
   `;
 }
 
-function renderNegotiationScriptView(clauses) {
-  const flagged = clauses.filter((c) => c.type === 'high' || c.type === 'medium');
+function renderNegotiationScriptView(clauses = []) {
+  const safeClauses = Array.isArray(clauses) ? clauses : [];
+  const flagged = safeClauses.filter((c) => c && (c.type === 'high' || c.type === 'medium'));
 
   return `
     <h4 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
@@ -248,20 +252,22 @@ function renderNegotiationScriptView(clauses) {
     <div style="display:flex; flex-direction:column; gap:1rem;" role="list">
       ${flagged.length === 0 ? `
         <div style="color:var(--text-muted); font-size:0.88rem;">No high or medium risk clauses flagged for negotiation.</div>
-      ` : flagged.map((c) => `
+      ` : flagged.map((c) => {
+        const type = c?.type === 'high' ? 'high' : 'medium';
+        return `
         <div style="padding:1.15rem; border-radius:var(--radius-sm); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);" role="listitem">
-          <div style="font-weight:700; font-size:0.92rem; color:var(--risk-${c.type === 'high' ? 'high' : 'medium'}); margin-bottom:0.4rem;">
-            Issue: ${escapeHtml(c.title)} (${escapeHtml(c.line)})
+          <div style="font-weight:700; font-size:0.92rem; color:var(--risk-${type}); margin-bottom:0.4rem;">
+            Issue: ${escapeHtml(c?.title || 'Contractual Term')} (${escapeHtml(c?.line || 'Section')})
           </div>
           <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">
-            Original Clause: "${escapeHtml(c.originalText)}"
+            Original Clause: "${escapeHtml(c?.originalText || '')}"
           </div>
           <div style="padding:0.75rem 1rem; border-radius:6px; background:rgba(0,0,0,0.3); border-left:3px solid var(--accent-primary); font-size:0.86rem; line-height:1.6;">
             <strong>Suggested Email Counter-Offer Script:</strong><br/>
-            "Regarding Section '${escapeHtml(c.line)}', we respectfully request modifying the current terms to: '${escapeHtml(c.recommendation)}'. This aligns with standard industry practice and ensures an equitable agreement for both parties."
+            "Regarding Section '${escapeHtml(c?.line || 'Term')}', we respectfully request modifying the current terms to: '${escapeHtml(c?.recommendation || 'Standard bilateral provisions')}'. This aligns with standard industry practice and ensures an equitable agreement for both parties."
           </div>
         </div>
-      `).join('')}
+      `;}).join('')}
     </div>
   `;
 }

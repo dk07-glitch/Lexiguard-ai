@@ -8,6 +8,7 @@
  */
 export const safeStorage = Object.freeze({
   getItem(key) {
+    if (typeof key !== 'string' || !key) return null;
     try {
       return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
     } catch {
@@ -15,15 +16,17 @@ export const safeStorage = Object.freeze({
     }
   },
   setItem(key, value) {
+    if (typeof key !== 'string' || !key) return;
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(key, value);
+        localStorage.setItem(key, String(value));
       }
     } catch (e) {
       console.warn('[safeStorage] setItem failed:', e);
     }
   },
   removeItem(key) {
+    if (typeof key !== 'string' || !key) return;
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(key);
@@ -49,7 +52,8 @@ export const safeStorage = Object.freeze({
 /**
  * Escapes unsafe HTML characters to prevent XSS attacks across all contexts.
  * Sanitizes &, <, >, ", ', `, and / to prevent attribute breakout and execution.
- * @param {string} str - Raw string
+ * Accepts strings, numbers, or boolean values safely.
+ * @param {*} str - Raw string or primitive value
  * @returns {string} Sanitized string safe for DOM insertion
  */
 export function escapeHtml(str) {
@@ -182,22 +186,29 @@ export function maskApiKey(key) {
  * @returns {Function} Debounced function
  */
 export function debounce(func, delayMs = 300) {
+  if (typeof func !== 'function') return () => {};
   let timeoutId;
-  return function (...args) {
+  const debounced = function (...args) {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(this, args), delayMs);
+    timeoutId = setTimeout(() => func.apply(this, args), Math.max(Number(delayMs) || 0, 0));
   };
+  debounced.cancel = () => clearTimeout(timeoutId);
+  return debounced;
 }
 
 /**
- * Clamps a number between minimum and maximum bounds.
+ * Clamps a number between minimum and maximum bounds with NaN and bound reversal protection.
  * @param {number} val - Input value
  * @param {number} min - Minimum bound
  * @param {number} max - Maximum bound
  * @returns {number} Clamped value
  */
 export function clamp(val, min = 0, max = 100) {
-  return Math.min(Math.max(val, min), max);
+  const num = Number(val);
+  const lower = Math.min(min, max);
+  const upper = Math.max(min, max);
+  if (Number.isNaN(num)) return lower;
+  return Math.min(Math.max(num, lower), upper);
 }
 
 /**

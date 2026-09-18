@@ -73,6 +73,15 @@ export class PIIMasker {
   }
 
   /**
+   * Alias for anonymize to provide semantic convenience.
+   * @param {string} text
+   * @returns {AnonymizeResult}
+   */
+  mask(text) {
+    return this.anonymize(text);
+  }
+
+  /**
    * Anonymizes sensitive PII inside contract text using compliant regex tokens.
    * @param {string} text - Raw input document text
    * @returns {AnonymizeResult} Anonymized payload and metadata

@@ -30,9 +30,9 @@ export function renderRiskOverview(container, analysis) {
   }
 
   const clauses = Array.isArray(analysis?.clauses) ? analysis.clauses : [];
-  const highCount = clauses.filter((c) => c.type === 'high').length;
-  const mediumCount = clauses.filter((c) => c.type === 'medium').length;
-  const standardCount = clauses.filter((c) => c.type === 'low' || c.type === 'info').length;
+  const highCount = clauses.filter((c) => c && c.type === 'high').length;
+  const mediumCount = clauses.filter((c) => c && c.type === 'medium').length;
+  const standardCount = clauses.filter((c) => c && (c.type === 'low' || c.type === 'info')).length;
   const piiCount = analysis?.piiRedactedCount || 0;
 
   container.innerHTML = `
