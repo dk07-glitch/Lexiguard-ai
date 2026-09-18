@@ -76,10 +76,11 @@ export function escapeHtml(str) {
  */
 export function sanitizeFileName(filename, fallback = 'document.txt') {
   if (typeof filename !== 'string' || !filename.trim()) return fallback;
-  // Remove null bytes and url-encoded null bytes
+  // Remove null bytes, url-encoded null bytes, and RTLO/bidirectional overrides
   let clean = filename
     .replace(/\0/g, '')
     .replace(/%00/gi, '')
+    .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')
     .trim();
 
   // Extract base filename if path separators exist
@@ -132,7 +133,14 @@ export function validateFileUpload(file, textContent = '') {
     return { valid: false, error: 'File exceeds the 2MB size limit.' };
   }
 
-  const name = (file.name || '').toLowerCase();
+  const rawName = file.name || '';
+
+  // Check for bidirectional Unicode override characters (RTLO spoofing attack prevention)
+  if (/[\u202A-\u202E\u2066-\u2069]/.test(rawName)) {
+    return { valid: false, error: 'Dangerous filename contains right-to-left override (RTLO) or bidirectional control characters.' };
+  }
+
+  const name = rawName.toLowerCase();
   
   // Check against dangerous extensions
   for (const dangerousExt of DANGEROUS_EXTENSIONS) {

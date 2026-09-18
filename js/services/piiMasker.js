@@ -39,17 +39,23 @@ export function isValidLuhn(numberStr) {
 }
 
 // Pre-compiled static regular expressions to eliminate re-compilation in hot paths
+const REGEX_PRIVATE_KEY = /(?:-----BEGIN (?:[A-Z0-9_-]+\s+)?PRIVATE KEY-----[\s\S]+?-----END (?:[A-Z0-9_-]+\s+)?PRIVATE KEY-----)/g;
 const REGEX_JWT = /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g;
 const REGEX_BEARER = /Bearer\s+([A-Za-z0-9_\-\.]{20,})/gi;
 const REGEX_AWS = /\bAKIA[0-9A-Z]{16}\b/g;
 const REGEX_GITHUB = /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/g;
 const REGEX_GOOGLE_KEY = /\bAIzaSy[A-Za-z0-9_-]{33}\b/g;
+const REGEX_STRIPE = /\b(?:sk|pk)_(?:live|test)_[0-9a-zA-Z]{24,}\b/g;
+const REGEX_SLACK = /\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b/g;
 const REGEX_GENERIC_KEY = /(?:api[_-]?key|secret|token)\s*[:=]\s*['"]?([a-zA-Z0-9_\-\.]{16,})['"]?/gi;
 const REGEX_IBAN = /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g;
 const REGEX_CARDS = /\b(?:\d{4}[-\s]?){3}\d{1,7}\b|\b\d{13,19}\b/g;
+const REGEX_BTC = /\b(?:1|3)[a-km-zA-HJ-NP-Z1-9]{25,34}\b|\bbc1[a-z0-9]{39,59}\b/g;
+const REGEX_ETH = /\b0x[a-fA-F0-9]{40}\b/g;
 const REGEX_SSN = /\b\d{3}[-.\s]\d{2}[-.\s]\d{4}\b/g;
 const REGEX_PASSPORT = /(?:Passport\s*(?:No|Number|#)?[:\s]*)([A-Z0-9]{7,10})\b/gi;
 const REGEX_DOB = /(?:DOB|Date of Birth|Birth Date)[:\s]+(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/gi;
+const REGEX_MEDICAL = /(?:MRN|Medical Record|Patient ID|Health ID)[:\s#]+([A-Z0-9-]{6,16})\b/gi;
 const REGEX_IPV4 = /\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g;
 const REGEX_EMAIL = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const REGEX_PHONE = /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
@@ -68,7 +74,9 @@ export class PIIMasker {
       contacts: true,
       identifiers: true,
       financial: true,
-      secrets: true
+      secrets: true,
+      crypto: true,
+      medical: true
     };
   }
 
@@ -103,8 +111,12 @@ export class PIIMasker {
     };
 
     try {
-      // 1. Secrets, API Keys, Bearer Tokens, and JWTs
+      // 1. Secrets, Private RSA/SSH Keys, API Keys, Bearer Tokens, and JWTs
       if (this.categories.secrets) {
+        sanitized = sanitized.replace(REGEX_PRIVATE_KEY, (match) =>
+          registerToken('SECRET_KEY', match)
+        );
+
         sanitized = sanitized.replace(REGEX_JWT, (match) =>
           registerToken('SECRET_KEY', match)
         );
@@ -126,14 +138,22 @@ export class PIIMasker {
           registerToken('SECRET_KEY', match)
         );
 
+        sanitized = sanitized.replace(REGEX_STRIPE, (match) =>
+          registerToken('SECRET_KEY', match)
+        );
+
+        sanitized = sanitized.replace(REGEX_SLACK, (match) =>
+          registerToken('SECRET_KEY', match)
+        );
+
         sanitized = sanitized.replace(REGEX_GENERIC_KEY, (match, secretVal) => {
           const token = registerToken('SECRET_KEY', secretVal);
           return match.replace(secretVal, token);
         });
       }
 
-      // 2. Financial Accounts: Credit/Debit Cards (with Luhn check) & IBANs
-      if (this.categories.financial) {
+      // 2. Financial Accounts: Credit/Debit Cards (with Luhn check), IBANs & Cryptocurrency Wallets
+      if (this.categories.financial || this.categories.crypto) {
         sanitized = sanitized.replace(REGEX_IBAN, (match) =>
           registerToken('BANK_ACCOUNT', match)
         );
@@ -144,10 +164,23 @@ export class PIIMasker {
           }
           return match;
         });
+
+        sanitized = sanitized.replace(REGEX_BTC, (match) =>
+          registerToken('CRYPTO_WALLET', match)
+        );
+
+        sanitized = sanitized.replace(REGEX_ETH, (match) =>
+          registerToken('CRYPTO_WALLET', match)
+        );
       }
 
-      // 3. Social Security & National Tax Identifiers (SSN: XXX-XX-XXXX)
-      if (this.categories.identifiers) {
+      // 3. Social Security, National Tax Identifiers, Passport, DOB & Medical IDs
+      if (this.categories.identifiers || this.categories.medical) {
+        sanitized = sanitized.replace(REGEX_MEDICAL, (match, medVal) => {
+          const token = registerToken('MEDICAL_ID', medVal);
+          return match.replace(medVal, token);
+        });
+
         sanitized = sanitized.replace(REGEX_SSN, (match) => 
           registerToken('NATIONAL_ID', match)
         );

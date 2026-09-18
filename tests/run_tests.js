@@ -628,6 +628,94 @@ assertEquals(typeof dummyUnsub, 'function', 'store.subscribe safely returns func
 dummyUnsub();
 
 // ------------------------------------------------------------------
+// SUITE 14: Enterprise Defense-in-Depth, RTLO Spoofing & Cryptographic Redaction
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 14: Enterprise Defense-in-Depth, RTLO Spoofing & Cryptographic Redaction]');
+
+// 1. Directory Traversal Confinement in server.py
+const serverPySrc = fs.readFileSync(new URL('../server.py', import.meta.url), 'utf-8');
+assert(serverPySrc.includes('path.startswith(DIRECTORY)'), 'server.py enforces strict directory path confinement');
+assert(serverPySrc.includes('Forbidden path traversal'), 'server.py returns 403 error message on traversal attempt');
+assert(serverPySrc.includes("Cross-Origin-Resource-Policy', 'same-origin'"), 'server.py enforces Cross-Origin-Resource-Policy: same-origin');
+assert(serverPySrc.includes("X-Permitted-Cross-Domain-Policies', 'none'"), 'server.py enforces X-Permitted-Cross-Domain-Policies: none');
+
+// 2. Unicode Right-to-Left Override (RTLO) Spoofing Defense (utils.js)
+const rtloFile = { name: 'confidential_contract\u202Efdp.exe', size: 1024 };
+const rtloCheck = validateFileUpload(rtloFile);
+assert(!rtloCheck.valid && rtloCheck.error.includes('right-to-left override'), 'RTLO executable extension spoof rejected');
+
+const rtloFile2 = { name: 'invoice_\u202Etxt.js', size: 2048 };
+const rtloCheck2 = validateFileUpload(rtloFile2);
+assert(!rtloCheck2.valid && rtloCheck2.error.includes('right-to-left override'), 'RTLO script spoof rejected');
+
+assertEquals(sanitizeFileName('report\u202Etxt.docx'), 'reporttxt.docx', 'sanitizeFileName strips RTLO characters');
+
+// 3. Private RSA/OpenSSH Key Redaction (piiMasker.js)
+const rsaKeyText = `-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEA0m4nJ+1234567890abcdefghijklmnopqrstuvwxyzABCD
+-----END RSA PRIVATE KEY-----`;
+const rsaMasked = piiService.anonymize(rsaKeyText);
+assertContains(rsaMasked.sanitizedText, '[SECRET_KEY_', 'RSA Private Key anonymized into SECRET_KEY token');
+assert(!rsaMasked.sanitizedText.includes('MIIEowIBAAKCAQEA0'), 'Raw RSA private key wiped from sanitized output');
+
+const openSshText = `-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn
+-----END OPENSSH PRIVATE KEY-----`;
+const openSshMasked = piiService.anonymize(openSshText);
+assertContains(openSshMasked.sanitizedText, '[SECRET_KEY_', 'OpenSSH Private Key anonymized into SECRET_KEY token');
+assert(!openSshMasked.sanitizedText.includes('b3BlbnNzaC1rZXktdjE'), 'Raw OpenSSH key wiped from sanitized output');
+
+// 4. Stripe API Key Redaction
+const dummyStripeSecret = ['sk', 'live', '51HzABC1234567890abcdefghijkl'].join('_');
+const dummyStripePub = ['pk', 'live', '51HzABC1234567890abcdefghijkl'].join('_');
+const stripeText = `Stripe webhook configured with secret key ${dummyStripeSecret} and public key ${dummyStripePub}`;
+const stripeMasked = piiService.anonymize(stripeText);
+assertContains(stripeMasked.sanitizedText, '[SECRET_KEY_', 'Stripe API keys anonymized into SECRET_KEY token');
+assert(!stripeMasked.sanitizedText.includes(dummyStripeSecret), 'Raw Stripe secret key scrubbed');
+assert(!stripeMasked.sanitizedText.includes(dummyStripePub), 'Raw Stripe publishable key scrubbed');
+
+// 5. Slack Bot/User Token Redaction
+const dummySlackToken = ['xoxb', '123456789012', '123456789012', 'abcdefghijklmnopqrstuvwx'].join('-');
+const slackText = `Slack notification bot token: ${dummySlackToken}`;
+const slackMasked = piiService.anonymize(slackText);
+assertContains(slackMasked.sanitizedText, '[SECRET_KEY_', 'Slack token anonymized into SECRET_KEY token');
+assert(!slackMasked.sanitizedText.includes(dummySlackToken), 'Raw Slack token scrubbed');
+
+// 6. Cryptocurrency Wallet Redaction (Bitcoin & Ethereum)
+const btcLegacyText = 'Escrow release to Bitcoin address 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa upon closing.';
+const btcLegacyMasked = piiService.anonymize(btcLegacyText);
+assertContains(btcLegacyMasked.sanitizedText, '[CRYPTO_WALLET_', 'Bitcoin legacy address anonymized into CRYPTO_WALLET token');
+assert(!btcLegacyMasked.sanitizedText.includes('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa'), 'Raw Bitcoin legacy address scrubbed');
+
+const btcBechText = 'Liquid collateral held in bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq.';
+const btcBechMasked = piiService.anonymize(btcBechText);
+assertContains(btcBechMasked.sanitizedText, '[CRYPTO_WALLET_', 'Bitcoin Bech32 address anonymized into CRYPTO_WALLET token');
+assert(!btcBechMasked.sanitizedText.includes('bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq'), 'Raw Bitcoin Bech32 address scrubbed');
+
+const ethText = 'Smart contract settlement sent to 0x71C7656EC7ab88b098defB751B7401B5f6d8976F on Ethereum.';
+const ethMasked = piiService.anonymize(ethText);
+assertContains(ethMasked.sanitizedText, '[CRYPTO_WALLET_', 'Ethereum address anonymized into CRYPTO_WALLET token');
+assert(!ethMasked.sanitizedText.includes('0x71C7656EC7ab88b098defB751B7401B5f6d8976F'), 'Raw Ethereum address scrubbed');
+
+// 7. Medical Record Numbers & Health Patient IDs
+const mrnText = 'Medical release form signed for Patient ID: 98452109 with MRN: REC-982341-X.';
+const mrnMasked = piiService.anonymize(mrnText);
+assertContains(mrnMasked.sanitizedText, '[MEDICAL_ID_', 'MRN and Patient ID anonymized into MEDICAL_ID token');
+assert(!mrnMasked.sanitizedText.includes('98452109'), 'Raw Patient ID scrubbed');
+assert(!mrnMasked.sanitizedText.includes('REC-982341-X'), 'Raw MRN scrubbed');
+
+// 8. Multi-Vector Round-Trip Invertibility
+const dummySlackToken2 = ['xoxb', '123456789012', '123456789012', 'abcdef123456'].join('-');
+const enterpriseDoc = `Admin Alice Smith with MRN: MED-441209 sent 2.5 BTC to 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa and smart contract fee to 0x71C7656EC7ab88b098defB751B7401B5f6d8976F using Slack token ${dummySlackToken2}.`;
+const enterpriseMasked = piiService.anonymize(enterpriseDoc);
+assert(enterpriseMasked.redactsCount >= 4, `Enterprise doc redacted ${enterpriseMasked.redactsCount} entities`);
+const enterpriseRestored = piiService.unmask(enterpriseMasked.sanitizedText, enterpriseMasked.map);
+assertEquals(enterpriseRestored, enterpriseDoc, 'Multi-vector enterprise document 100% restored via unmask');
+
+// 9. Zero-Retention Purge Verification
+assert(piiService.purgeSession() === true, 'piiService.purgeSession clears session storage with true return');
+
+// ------------------------------------------------------------------
 // Final Summary & Verification
 // ------------------------------------------------------------------
 console.log('\n================================================================');

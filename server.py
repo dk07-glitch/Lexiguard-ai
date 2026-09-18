@@ -13,7 +13,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
     def do_GET(self):
-        path = self.translate_path(self.path)
+        path = os.path.abspath(self.translate_path(self.path))
+        # Directory traversal defense: ensure resolved path is strictly within DIRECTORY
+        if not path.startswith(DIRECTORY):
+            self.send_error(403, "Access Denied: Forbidden path traversal.")
+            return
+
         if os.path.isfile(path):
             ext = os.path.splitext(path)[1].lower()
             accept_encoding = self.headers.get('Accept-Encoding', '').lower()
@@ -45,6 +50,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
         self.send_header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
         self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+        self.send_header('Cross-Origin-Resource-Policy', 'same-origin')
+        self.send_header('X-Permitted-Cross-Domain-Policies', 'none')
         super().end_headers()
 
 if __name__ == '__main__':
