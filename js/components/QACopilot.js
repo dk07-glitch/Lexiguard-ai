@@ -6,6 +6,13 @@
 import { aiService } from '../services/aiEngine.js';
 import { escapeHtml, showToast } from '../utils.js';
 
+export function formatMessageText(text) {
+  let clean = escapeHtml(text || '');
+  // Convert **bold** to <strong>bold</strong>
+  clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  return clean;
+}
+
 export function renderQACopilot(container, documentText) {
   if (!container) return;
 
@@ -18,13 +25,6 @@ export function renderQACopilot(container, documentText) {
   ];
 
   let isThinking = false;
-
-  function formatMessageText(text) {
-    let clean = escapeHtml(text || '');
-    // Convert **bold** to <strong>bold</strong>
-    clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    return clean;
-  }
 
   container.innerHTML = `
     <div class="glass-panel chat-container" role="region" aria-label="Legal AI Copilot Chat">

@@ -129,7 +129,7 @@ export function renderActionCenter(container, documentTitle, analysis) {
   updateView();
 }
 
-function renderTimelineView(timelineItems = []) {
+export function renderTimelineView(timelineItems = []) {
   const safeItems = Array.isArray(timelineItems) ? timelineItems : [];
   return `
     <h4 style="font-size:1.05rem; font-weight:800; margin-bottom:1.1rem; display:flex; align-items:center; gap:0.5rem;">
@@ -162,7 +162,7 @@ function renderTimelineView(timelineItems = []) {
   `;
 }
 
-function renderLetterGeneratorView() {
+export function renderLetterGeneratorView() {
   return `
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
       <!-- Inputs Form -->
@@ -235,7 +235,7 @@ function renderLetterGeneratorView() {
   `;
 }
 
-function renderNegotiationScriptView(clauses = []) {
+export function renderNegotiationScriptView(clauses = []) {
   const safeClauses = Array.isArray(clauses) ? clauses : [];
   const flagged = safeClauses.filter((c) => c && (c.type === 'high' || c.type === 'medium'));
 

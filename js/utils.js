@@ -98,6 +98,13 @@ export function sanitizeFileName(filename, fallback = 'document.txt') {
 
   // Strip leading dots or underscores
   clean = clean.replace(/^[._]+/, '');
+
+  // Disarm Windows DOS device reserved names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+  const baseNoExt = clean.replace(/\.[^.]+$/, '');
+  if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(baseNoExt)) {
+    clean = `safe_${clean}`;
+  }
+
   return clean || fallback;
 }
 
@@ -138,6 +145,12 @@ export function validateFileUpload(file, textContent = '') {
   // Check for bidirectional Unicode override characters (RTLO spoofing attack prevention)
   if (/[\u202A-\u202E\u2066-\u2069]/.test(rawName)) {
     return { valid: false, error: 'Dangerous filename contains right-to-left override (RTLO) or bidirectional control characters.' };
+  }
+
+  // Reject Windows DOS device reserved names in uploads (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+  const baseName = (rawName.split(/[/\\]+/).pop() || '').replace(/\.[^.]+$/, '');
+  if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(baseName)) {
+    return { valid: false, error: 'Reserved system device filename detected. Please rename the file.' };
   }
 
   const name = rawName.toLowerCase();

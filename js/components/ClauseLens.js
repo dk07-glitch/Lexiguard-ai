@@ -169,7 +169,7 @@ export function renderClauseLens(container, documentText, clauses = []) {
   updateCardsOnly();
 }
 
-function renderHighlightedText(text, clauses) {
+export function renderHighlightedText(text, clauses) {
   let html = escapeHtml(text || '');
   const safeClauses = Array.isArray(clauses) ? clauses : [];
 

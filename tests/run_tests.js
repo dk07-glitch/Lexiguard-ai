@@ -11,6 +11,9 @@ import { aiService, fastHash } from '../js/services/aiEngine.js';
 import { exporter } from '../js/services/exporter.js';
 import { appStore } from '../js/store.js';
 import { SAMPLE_DOCUMENTS } from '../js/data/samples.js';
+import { renderHighlightedText } from '../js/components/ClauseLens.js';
+import { renderTimelineView, renderLetterGeneratorView, renderNegotiationScriptView } from '../js/components/ActionCenter.js';
+import { formatMessageText } from '../js/components/QACopilot.js';
 
 let totalTests = 0;
 let passed = 0;
@@ -714,6 +717,206 @@ assertEquals(enterpriseRestored, enterpriseDoc, 'Multi-vector enterprise documen
 
 // 9. Zero-Retention Purge Verification
 assert(piiService.purgeSession() === true, 'piiService.purgeSession clears session storage with true return');
+
+// ------------------------------------------------------------------
+// SUITE 15: Component Sub-View Renderers, Templates & Export Encoders
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 15: Component Sub-View Renderers, Templates & Export Encoders]');
+
+// 1. ClauseLens renderHighlightedText
+const hlSampleText = 'This Lease shall automatically renew unless written notice is sent 90 days prior.';
+const hlClauses = [
+  { id: 'auto_ren', type: 'high', title: 'Auto Renewal Trap', originalText: 'This Lease shall automatically renew unless written notice' }
+];
+const highlightedHtml = renderHighlightedText(hlSampleText, hlClauses);
+assertContains(highlightedHtml, 'id="hl-auto_ren"', 'renderHighlightedText embeds clause ID anchor');
+assertContains(highlightedHtml, 'class="hl-clause hl-high"', 'renderHighlightedText assigns hl-high class');
+assertContains(highlightedHtml, 'role="mark"', 'renderHighlightedText assigns semantic mark role');
+assertEquals(renderHighlightedText('', []), '', 'renderHighlightedText handles empty string input');
+assertEquals(renderHighlightedText(null, null), '', 'renderHighlightedText handles null input safely');
+
+// 2. ActionCenter renderTimelineView
+const timelineItems = [
+  { date: '60 Days Pre-Expiry', title: 'Written Non-Renewal Notice', type: 'deadline' },
+  { date: '1st of Month', title: 'Monthly Base Rent Due', type: 'payment' }
+];
+const timelineHtml = renderTimelineView(timelineItems);
+assertContains(timelineHtml, 'Written Non-Renewal Notice', 'renderTimelineView displays milestone title');
+assertContains(timelineHtml, 'badge-high', 'renderTimelineView assigns high badge to deadlines');
+assertContains(timelineHtml, 'badge-medium', 'renderTimelineView assigns medium badge to payments');
+assertContains(timelineHtml, 'role="list"', 'renderTimelineView provides accessible list container');
+const emptyTimelineHtml = renderTimelineView([]);
+assertContains(emptyTimelineHtml, 'No timeline events detected', 'renderTimelineView handles empty timeline gracefully');
+
+// 3. ActionCenter renderNegotiationScriptView
+const negClauses = [
+  { id: 'c1', type: 'high', title: 'Liquidated Damages', line: 'Section 4', originalText: 'Forfeit deposit', recommendation: 'Require itemized accounting' },
+  { id: 'c2', type: 'low', title: 'Notice Window', line: 'Section 1', originalText: 'Standard notice', recommendation: 'Standard' }
+];
+const negScriptHtml = renderNegotiationScriptView(negClauses);
+assertContains(negScriptHtml, 'Liquidated Damages', 'renderNegotiationScriptView displays high risk issue');
+assertContains(negScriptHtml, 'Suggested Email Counter-Offer Script:', 'renderNegotiationScriptView provides counter-script');
+assertContains(negScriptHtml, 'Require itemized accounting', 'renderNegotiationScriptView embeds recommendation');
+assert(!negScriptHtml.includes('Notice Window'), 'renderNegotiationScriptView filters out low risk clauses');
+const emptyNegHtml = renderNegotiationScriptView([]);
+assertContains(emptyNegHtml, 'No high or medium risk clauses flagged', 'renderNegotiationScriptView handles empty list');
+
+// 4. ActionCenter renderLetterGeneratorView
+const letterViewHtml = renderLetterGeneratorView();
+assertContains(letterViewHtml, 'lease_deposit', 'renderLetterGeneratorView includes lease deposit option');
+assertContains(letterViewHtml, 'non_compete_waiver', 'renderLetterGeneratorView includes non-compete waiver option');
+assertContains(letterViewHtml, 'contract_mod', 'renderLetterGeneratorView includes contract mod option');
+assertContains(letterViewHtml, 'id="inp-landlord"', 'renderLetterGeneratorView contains landlord input field');
+assertContains(letterViewHtml, 'id="letter-output-box"', 'renderLetterGeneratorView contains preview textarea');
+
+// 5. QACopilot formatMessageText
+const rawMdMessage = 'Notice must be provided within **30 days** in writing.';
+const formattedMd = formatMessageText(rawMdMessage);
+assertContains(formattedMd, '<strong>30 days</strong>', 'formatMessageText converts markdown bold to strong tag');
+const xssMdMessage = 'Beware of <script>alert("hack")</script> in **clause 5**';
+const formattedXss = formatMessageText(xssMdMessage);
+assertContains(formattedXss, '&lt;script&gt;', 'formatMessageText escapes malicious script tags');
+assertContains(formattedXss, '<strong>clause 5</strong>', 'formatMessageText bolds valid markdown while escaping XSS');
+assertEquals(formatMessageText(null), '', 'formatMessageText returns empty string on null');
+
+// 6. Exporter exportAsJson & exportAsMarkdown
+const sampleAnalysis = {
+  riskScore: 78,
+  riskCategory: 'High Risk',
+  summary: 'High risk contract with automated renewal and non-compete covenants.',
+  clauses: [
+    { id: 'c_auto', type: 'high', title: 'Auto Renewal', line: 'Section 2', originalText: 'Renews automatically', plainText: 'Locks you in', recommendation: 'Require 30-day notice' }
+  ],
+  timeline: [
+    { date: 'Oct 1', title: 'Notice Window', type: 'deadline' }
+  ]
+};
+const jsonExport = exporter.exportAsJson('SaaS Master Agreement', sampleAnalysis);
+const parsedJson = JSON.parse(jsonExport);
+assertEquals(parsedJson.title, 'SaaS Master Agreement', 'exportAsJson encodes title');
+assertEquals(parsedJson.tool, 'LexiGuard AI', 'exportAsJson records LexiGuard AI tool identifier');
+assertEquals(parsedJson.riskScore, 78, 'exportAsJson preserves numeric risk score');
+assertEquals(parsedJson.clauses.length, 1, 'exportAsJson serializes clauses array');
+
+const mdExport = exporter.exportAsMarkdown('SaaS Master Agreement', sampleAnalysis);
+assertContains(mdExport, '# SaaS Master Agreement', 'exportAsMarkdown generates main H1 heading');
+assertContains(mdExport, '78/100 [HIGH RISK]', 'exportAsMarkdown formats overall risk badge');
+assertContains(mdExport, '## Executive Summary', 'exportAsMarkdown includes summary section');
+assertContains(mdExport, 'Auto Renewal', 'exportAsMarkdown includes flagged clause title');
+assertContains(mdExport, 'Disclaimer:', 'exportAsMarkdown includes legal disclaimer');
+
+// ------------------------------------------------------------------
+// SUITE 16: Windows Reserved Device Names, Edge Cases & Invariant Stress Tests
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 16: Windows Reserved Device Names, Edge Cases & Invariant Stress Tests]');
+
+// 1. Windows Reserved Device Name Disarming (sanitizeFileName)
+assertEquals(sanitizeFileName('CON.txt'), 'safe_CON.txt', 'sanitizeFileName disarms Windows CON reserved name');
+assertEquals(sanitizeFileName('prn.doc'), 'safe_prn.doc', 'sanitizeFileName disarms Windows PRN reserved name');
+assertEquals(sanitizeFileName('AUX.json'), 'safe_AUX.json', 'sanitizeFileName disarms Windows AUX reserved name');
+assertEquals(sanitizeFileName('NUL.md'), 'safe_NUL.md', 'sanitizeFileName disarms Windows NUL reserved name');
+assertEquals(sanitizeFileName('com1.docx'), 'safe_com1.docx', 'sanitizeFileName disarms Windows COM1 reserved name');
+assertEquals(sanitizeFileName('lpt1.txt'), 'safe_lpt1.txt', 'sanitizeFileName disarms Windows LPT1 reserved name');
+assertEquals(sanitizeFileName('normal_contract.docx'), 'normal_contract.docx', 'sanitizeFileName leaves normal filenames unchanged');
+
+// 2. Windows Reserved Device Name Rejection in Uploads (validateFileUpload)
+assert(!validateFileUpload({ name: 'CON.txt', size: 1000 }).valid, 'validateFileUpload rejects CON.txt upload');
+assert(!validateFileUpload({ name: 'aux.docx', size: 1000 }).valid, 'validateFileUpload rejects aux.docx upload');
+assert(!validateFileUpload({ name: 'PRN.txt', size: 1000 }).valid, 'validateFileUpload guards against PRN reserved uploads');
+assert(validateFileUpload({ name: 'agreement.docx', size: 1000 }).valid, 'validateFileUpload accepts standard agreement.docx');
+
+// 3. High-Payload FNV-1a Hash Stress Test (10,000 chars)
+const massiveText = 'Standard Contractual Commitment Clause. '.repeat(250);
+const massT0 = performance.now();
+const massiveHash1 = fastHash(massiveText);
+const massiveHash2 = fastHash(massiveText);
+const massTimeMs = performance.now() - massT0;
+assertEquals(massiveHash1, massiveHash2, 'fastHash is deterministic on 10,000-character payload');
+assert(massiveHash1.length >= 5, 'fastHash generates robust multi-character hash on large string');
+assert(massTimeMs < 5.0, `fastHash calculates 10,000 characters in under 5ms (${massTimeMs.toFixed(3)}ms)`);
+
+// 4. Multiple Adjacent PII Tokens Stress Test
+const adjacentPiiText = 'Signatory: landlord@realty.com (555) 345-6789 paid $5,000.00 to 0x71C7656EC7ab88b098defB751B7401B5f6d8976F on 01/15/2026.';
+const adjMasked = piiService.anonymize(adjacentPiiText);
+assert(adjMasked.redactsCount >= 4, `Identified 4+ adjacent entities (${adjMasked.redactsCount})`);
+const adjRestored = piiService.unmask(adjMasked.sanitizedText, adjMasked.map);
+assertEquals(adjRestored, adjacentPiiText, 'Adjacent multi-vector PII entities 100% restored without collision');
+
+// 5. Store Immutability & Action Enums
+const frozenState = appStore.getState();
+let threwOnMutation = false;
+try {
+  frozenState.currentTheme = 'corrupted_theme';
+} catch {
+  threwOnMutation = true;
+}
+assert(threwOnMutation || appStore.getState().currentTheme !== 'corrupted_theme', 'appStore.getState() returns frozen immutable state');
+
+// 6. Store Active Tab Switching Verification across all 5 modules
+const allTabs = ['analyzer', 'clause-lens', 'comparator', 'copilot', 'dispute-letter'];
+for (const tabName of allTabs) {
+  appStore.dispatch('SET_ACTIVE_TAB', tabName);
+  assertEquals(appStore.getState().activeTab, tabName, `appStore switches tab to [${tabName}]`);
+}
+
+// ------------------------------------------------------------------
+// SUITE 17: End-to-End Contract Intelligence Pipeline & Lifecycle Verification
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 17: End-to-End Contract Intelligence Pipeline & Lifecycle Verification]');
+
+// Step 1 & 2: Ingest and store sample lease agreement
+const sampleLease = SAMPLE_DOCUMENTS.lease;
+appStore.dispatch('SET_DOCUMENT', { title: sampleLease.title, text: sampleLease.text, sampleId: 'lease' });
+assertEquals(appStore.getState().documentTitle, sampleLease.title, 'Pipeline Step 1-2: Document title stored in appStore');
+
+// Step 3: Anonymize PII in document before AI transmission
+const anonymizedLease = piiService.anonymize(sampleLease.text);
+assert(anonymizedLease.redactsCount > 0, 'Pipeline Step 3: PII entities anonymized prior to processing');
+assert(!anonymizedLease.sanitizedText.includes('$3,400'), 'Pipeline Step 3: Raw monetary figures scrubbed from payload');
+
+// Step 4: Perform AI analysis on sanitized payload
+const pipelineAnalysis = await aiService.analyzeDocument(anonymizedLease.sanitizedText);
+assert(pipelineAnalysis.riskScore >= 40, 'Pipeline Step 4: AI Analysis evaluated legal risk score');
+assert(pipelineAnalysis.clauses.length >= 1, 'Pipeline Step 4: Critical clauses identified');
+assert(pipelineAnalysis.timeline.length >= 1, 'Pipeline Step 4: Timeline milestones extracted');
+
+// Step 5: Store analysis in appStore
+appStore.dispatch('SET_ANALYSIS', pipelineAnalysis);
+assertEquals(appStore.getState().analysis.riskScore, pipelineAnalysis.riskScore, 'Pipeline Step 5: Analysis recorded in reactive store');
+assertEquals(appStore.getState().isAnalyzing, false, 'Pipeline Step 5: isAnalyzing reset upon completion');
+
+// Step 6: Grounded Q&A Copilot query
+const pipelineQa = await aiService.answerQuestion('What are the rules regarding security deposit return?', sampleLease.text);
+assertContains(pipelineQa.answer, 'deposit', 'Pipeline Step 6: Copilot provides grounded response regarding security deposit');
+
+// Step 7: Dual-document comparison with counter-offer
+const modifiedLease = sampleLease.text.replace('$3,400', '$3,000') + '\nClause 15: Added mutual confidentiality and indemnification cap.';
+const pipelineDiff = aiService.compareDocuments(sampleLease.text, modifiedLease);
+assert(pipelineDiff.addedCount >= 1, 'Pipeline Step 7: Comparator detects newly introduced terms');
+
+// Step 8: Generate formal dispute letter
+const pipelineLetter = aiService.generateDisputeLetter('lease_deposit', {
+  landlordName: 'Metro Properties',
+  propertyAddress: '123 Main St',
+  amount: '$3,400.00',
+  vacateDate: 'October 31, 2026',
+  tenantName: 'John Doe'
+});
+assertContains(pipelineLetter, 'Metro Properties', 'Pipeline Step 8: Dispute letter generated with recipient name');
+assertContains(pipelineLetter, '$3,400.00', 'Pipeline Step 8: Dispute letter formatted with demand amount');
+
+// Step 9: Export Consultation Pack & Structured JSON
+const pipelinePack = exporter.generateLawyerConsultPack(sampleLease.title, pipelineAnalysis);
+assertContains(pipelinePack, 'LAWYER CONSULTATION PREPARATION PACK', 'Pipeline Step 9: Lawyer consultation pack formatted');
+const pipelineJson = exporter.exportAsJson(sampleLease.title, pipelineAnalysis);
+assert(pipelineJson.includes('LexiGuard AI'), 'Pipeline Step 9: Structured JSON export generated');
+
+// Step 10: Complete session purge and zero retention verification
+appStore.dispatch('PURGE_STATE');
+const purgeResult = piiService.purgeSession();
+assertEquals(appStore.getState().documentText, '', 'Pipeline Step 10: Document text wiped from store');
+assertEquals(appStore.getState().analysis, null, 'Pipeline Step 10: Analysis wiped from store');
+assertEquals(purgeResult, true, 'Pipeline Step 10: PII session memory purged cleanly');
 
 // ------------------------------------------------------------------
 // Final Summary & Verification
