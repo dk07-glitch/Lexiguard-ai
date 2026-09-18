@@ -23,6 +23,31 @@ Legal contracts, leases, and terms of service are notoriously dense, intimidatin
 
 ---
 
+## 🎯 Problem Statement & Solution Architecture Alignment
+
+### The Systemic Problem
+Everyday individuals, tenants, employees, and freelancers routinely sign dense, legalese-heavy contracts without understanding one-sided liabilities, predatory fine print, or mandatory renewal deadlines. This knowledge and bargaining power asymmetry leads to severe financial loss, unexpected litigation, and unfair restrictive covenants.
+
+### Impacted Stakeholder Personas & Real-World Vulnerabilities
+
+| Stakeholder Persona | Real-World Predatory Trap | LexiGuard AI Architectural Safeguard |
+|:---|:---|:---|
+| **Tenants & Renters** | Trapped by 90-day certified mail renewal traps, 15% automatic rent hikes, and total security deposit forfeiture. | **ClauseLens** & **14-Day Statutory Security Deposit Demand Generator** in Action Center. |
+| **Employees & Hires** | Bound by overbroad 2-year post-employment non-compete covenants and unilateral IP assignment. | **Risk Radar** & **Non-Compete Covenant Modification Waiver Request Generator**. |
+| **Freelancers & Contractors** | Forced into unlimited indemnification liabilities, net-90 payment terms, and copyright forfeitures. | **Contract Comparator Matrix** with quantified net risk shifts (+/-). |
+| **Consumers & SaaS Users** | Buried terms of service allowing unilateral price changes, mandatory binding arbitration, and data harvesting. | **Grounded AI Legal Copilot** providing line-level citations with zero hallucination. |
+
+### The 6 Foundational Engineering Solution Pillars
+
+1. **Plain-English Clause Demystification** (`ClauseLens.js`): Translates opaque contractual legalese into everyday English with real-world impact assessments and interactive jump-to-line pulse navigation.
+2. **Proactive Risk Radar & Trap Detection** (`RiskOverview.js`): Real-time 0–100 SVG score meter categorizing clauses into Red Flags, Caution Watchouts, and Standard terms.
+3. **Differential Comparator & Net Risk Shift** (`ContractComparator.js`): Side-by-side dual document matrix highlighting added restrictions, omitted protections, and quantifying net risk variations.
+4. **Grounded Q&A Legal Copilot** (`QACopilot.js`): Interactive query assistant strictly grounded in document context with direct line and section citations.
+5. **Practical Action Center & Dispute Automation** (`ActionCenter.js` & `exporter.js`): Generates formal statutory dispute letters, negotiation counter-scripts, and 1-page printable lawyer consultation packs.
+6. **Bank-Grade Client-Side Privacy & Zero Retention** (`piiMasker.js`): Local-first ISO/IEC 7812 Luhn card checking, private key/credential redaction, and 1-click memory purge.
+
+---
+
 ## 🚀 Key Features
 
 ### 1. 🛡️ 100% Client-Side Privacy Shield & Zero Retention

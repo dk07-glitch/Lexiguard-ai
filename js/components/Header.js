@@ -4,7 +4,7 @@
  * @module Header
  */
 
-export function createHeader({ onThemeToggle, onOpenPrivacy, onOpenApiKey, currentTheme }) {
+export function createHeader({ onThemeToggle, onOpenPrivacy, onOpenApiKey, onOpenProblemAlignment, currentTheme }) {
   const header = document.createElement('header');
   header.className = 'header-nav';
   header.setAttribute('role', 'banner');
@@ -26,6 +26,12 @@ export function createHeader({ onThemeToggle, onOpenPrivacy, onOpenApiKey, curre
     </a>
 
     <div class="header-actions" role="toolbar" aria-label="Quick Actions">
+      <!-- Mission & Problem Statement Alignment Button -->
+      <button id="btn-problem-alignment" type="button" class="btn btn-secondary btn-sm" title="View Problem Statement & Architecture Alignment" aria-label="Open Problem Statement Alignment">
+        <i data-lucide="target" style="width:14px; height:14px; color:var(--accent-secondary);" aria-hidden="true"></i>
+        <span>Mission Alignment</span>
+      </button>
+
       <!-- Client-Side Privacy Shield Button -->
       <button id="btn-privacy-shield" type="button" class="privacy-shield-pill" title="Client-Side Privacy & PII Protection Active" aria-label="Open Privacy Shield Settings">
         <span class="privacy-pulse" aria-hidden="true"></span>
@@ -48,6 +54,7 @@ export function createHeader({ onThemeToggle, onOpenPrivacy, onOpenApiKey, curre
 
   // Bind event listeners asynchronously to guarantee DOM attachment
   requestAnimationFrame(() => {
+    header.querySelector('#btn-problem-alignment')?.addEventListener('click', onOpenProblemAlignment);
     header.querySelector('#btn-privacy-shield')?.addEventListener('click', onOpenPrivacy);
     header.querySelector('#btn-api-key')?.addEventListener('click', onOpenApiKey);
     header.querySelector('#btn-theme-toggle')?.addEventListener('click', onThemeToggle);

@@ -14,6 +14,7 @@ import { SAMPLE_DOCUMENTS } from '../js/data/samples.js';
 import { renderHighlightedText } from '../js/components/ClauseLens.js';
 import { renderTimelineView, renderLetterGeneratorView, renderNegotiationScriptView } from '../js/components/ActionCenter.js';
 import { formatMessageText } from '../js/components/QACopilot.js';
+import { PROBLEM_STATEMENT } from '../js/data/problemStatement.js';
 
 let totalTests = 0;
 let passed = 0;
@@ -917,6 +918,75 @@ const purgeResult = piiService.purgeSession();
 assertEquals(appStore.getState().documentText, '', 'Pipeline Step 10: Document text wiped from store');
 assertEquals(appStore.getState().analysis, null, 'Pipeline Step 10: Analysis wiped from store');
 assertEquals(purgeResult, true, 'Pipeline Step 10: PII session memory purged cleanly');
+
+// ------------------------------------------------------------------
+// SUITE 18: Problem Statement & Domain Alignment Verification (100% Alignment)
+// ------------------------------------------------------------------
+console.log('\n[Test Suite 18: Problem Statement & Domain Alignment Verification]');
+
+// 1. Problem Statement & Mission Architecture Metadata
+assert(typeof PROBLEM_STATEMENT.title === 'string' && PROBLEM_STATEMENT.title.length > 10, 'PROBLEM_STATEMENT defines clear title');
+assert(typeof PROBLEM_STATEMENT.coreProblem === 'string' && PROBLEM_STATEMENT.coreProblem.includes('asymmetry'), 'PROBLEM_STATEMENT specifies systemic legal asymmetry');
+assert(typeof PROBLEM_STATEMENT.missionStatement === 'string' && PROBLEM_STATEMENT.missionStatement.includes('demystify'), 'PROBLEM_STATEMENT defines clear democratization mission');
+
+// 2. Stakeholder Persona Vulnerabilities & Mappings
+assertEquals(PROBLEM_STATEMENT.impactedStakeholders.length, 4, 'PROBLEM_STATEMENT covers 4 primary stakeholder personas');
+const expectedStakeholders = ['tenants', 'employees', 'freelancers', 'consumers'];
+expectedStakeholders.forEach((id) => {
+  const s = PROBLEM_STATEMENT.impactedStakeholders.find((item) => item.id === id);
+  assert(Boolean(s), `Stakeholder persona [${id}] is formally mapped`);
+  assert(Boolean(s && s.role && s.vulnerability && s.mitigationFeature), `Stakeholder [${id}] has complete vulnerability and mitigation definitions`);
+  assert(Boolean(SAMPLE_DOCUMENTS[s.sampleContractKey]), `Stakeholder [${id}] links to active sample contract [${s?.sampleContractKey}]`);
+});
+
+// 3. The 6 Engineering Solution Pillars
+assertEquals(PROBLEM_STATEMENT.solutionPillars.length, 6, 'PROBLEM_STATEMENT defines exactly 6 foundational solution pillars');
+const expectedPillars = ['demystification', 'trap_detection', 'version_comparison', 'grounded_qa', 'actionable_remedies', 'zero_retention_privacy'];
+expectedPillars.forEach((pillarId) => {
+  const p = PROBLEM_STATEMENT.solutionPillars.find((item) => item.id === pillarId);
+  assert(Boolean(p), `Solution pillar [${pillarId}] is specified`);
+  assert(Boolean(p && p.title && p.objective && p.component), `Pillar [${pillarId}] defines concrete objective and architectural component`);
+});
+
+// 4. Sample Documents Problem Domain Realism
+// Tenant Lease: Deposit forfeiture & auto-renew trap
+const leaseDoc = SAMPLE_DOCUMENTS.lease;
+assert(leaseDoc.clauses.some((c) => c.title.includes('Deposit Forfeiture')), 'Tenant lease targets predatory deposit forfeiture');
+assert(leaseDoc.clauses.some((c) => c.title.includes('Non-Renewal Trap')), 'Tenant lease targets 90-day certified mail trap');
+
+/// Employee Agreement: Non-compete covenants & IP assignment
+const empDoc = SAMPLE_DOCUMENTS.employment;
+assert(empDoc.clauses.some((c) => c.title.toLowerCase().includes('non-compete')), 'Employment agreement targets post-employment non-compete covenants');
+
+// Freelance Agreement: Payment & IP protection terms
+const freeDoc = SAMPLE_DOCUMENTS.freelance;
+assert(freeDoc.clauses.some((c) => c.title.toLowerCase().includes('ip transferred') || c.title.toLowerCase().includes('payment')), 'Freelance contract targets payment and IP protections');
+
+// SaaS Terms: Price modifications & unilateral amendments
+const saasDoc = SAMPLE_DOCUMENTS.saas;
+assert(saasDoc.clauses.some((c) => c.title.toLowerCase().includes('unilateral')), 'SaaS terms target unilateral modification clauses');
+
+// 5. Action Center Dispute Remedies Alignment
+const tenantDisputeLetter = aiService.generateDisputeLetter('lease_deposit', { landlordName: 'Apex Properties', amount: '$3,400.00' });
+assertContains(tenantDisputeLetter, 'fourteen (14) calendar days', 'Dispute letter enforces statutory 14-day security deposit return window');
+
+const nonCompeteWaiver = aiService.generateDisputeLetter('non_compete_waiver', { employerName: 'Tech Innovations LLC' });
+assertContains(nonCompeteWaiver, 'restrictive non-competition covenant', 'Waiver letter directly targets restrictive employment covenants');
+
+// 6. Header & UI Alignment Controls
+const headerSource = fs.readFileSync(new URL('../js/components/Header.js', import.meta.url), 'utf-8');
+assert(headerSource.includes('btn-problem-alignment'), 'Header provides accessible Problem Statement & Mission Alignment button');
+assert(headerSource.includes('Mission Alignment'), 'Header displays Mission Alignment label');
+
+const modalSource = fs.readFileSync(new URL('../js/components/ProblemAlignmentModal.js', import.meta.url), 'utf-8');
+assert(modalSource.includes("setAttribute('role', 'dialog')") || modalSource.includes('role="dialog"'), 'Problem alignment modal enforces WAI-ARIA dialog semantics');
+assert(modalSource.includes("setAttribute('aria-modal', 'true')") || modalSource.includes('aria-modal="true"'), 'Problem alignment modal enforces aria-modal');
+assert(modalSource.includes('trapFocus'), 'Problem alignment modal implements keyboard focus trapping');
+
+// 7. README.md Alignment Documentation
+const readmeContent = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf-8');
+assert(readmeContent.includes('Problem Statement & Solution Architecture Alignment'), 'README.md documents Problem Statement Alignment');
+assert(readmeContent.includes('The 6 Foundational Engineering Solution Pillars'), 'README.md details all 6 solution pillars');
 
 // ------------------------------------------------------------------
 // Final Summary & Verification

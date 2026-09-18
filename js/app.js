@@ -14,6 +14,7 @@ import { renderQACopilot } from './components/QACopilot.js';
 import { renderActionCenter } from './components/ActionCenter.js';
 import { createPrivacyModal } from './components/PrivacyShield.js';
 import { createApiKeyModal } from './components/ApiKeyModal.js';
+import { createProblemAlignmentModal } from './components/ProblemAlignmentModal.js';
 import { escapeHtml, showToast, debounce, announceA11y, validateFileUpload, sanitizeFileName } from './utils.js';
 
 class LexiGuardApp {
@@ -193,6 +194,7 @@ class LexiGuardApp {
       onThemeToggle: () => this.toggleTheme(),
       onOpenPrivacy: () => this.openPrivacyModal(),
       onOpenApiKey: () => this.openApiKeyModal(),
+      onOpenProblemAlignment: () => this.openProblemAlignmentModal(),
       currentTheme: this.currentTheme
     });
     container.appendChild(header);
@@ -455,6 +457,20 @@ class LexiGuardApp {
         triggerEl?.focus?.();
       },
       onKeyUpdated: () => this.renderHeader()
+    });
+    container.appendChild(modal);
+  }
+
+  openProblemAlignmentModal() {
+    const container = document.getElementById('modal-container');
+    if (!container) return;
+    const triggerEl = document.activeElement;
+    container.innerHTML = '';
+    const modal = createProblemAlignmentModal({
+      onClose: () => {
+        container.innerHTML = '';
+        triggerEl?.focus?.();
+      }
     });
     container.appendChild(modal);
   }
