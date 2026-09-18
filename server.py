@@ -3,6 +3,7 @@ import socketserver
 import os
 import sys
 import webbrowser
+import gzip
 
 PORT = 8080
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
@@ -10,6 +11,28 @@ DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
+
+    def do_GET(self):
+        path = self.translate_path(self.path)
+        if os.path.isfile(path):
+            ext = os.path.splitext(path)[1].lower()
+            accept_encoding = self.headers.get('Accept-Encoding', '').lower()
+            if ext in ('.html', '.js', '.css', '.json', '.svg', '.md') and 'gzip' in accept_encoding:
+                ctype = self.guess_type(path)
+                try:
+                    with open(path, 'rb') as f:
+                        raw_bytes = f.read()
+                    compressed = gzip.compress(raw_bytes, compresslevel=6)
+                    self.send_response(200)
+                    self.send_header('Content-Type', ctype)
+                    self.send_header('Content-Length', str(len(compressed)))
+                    self.send_header('Content-Encoding', 'gzip')
+                    self.end_headers()
+                    self.wfile.write(compressed)
+                    return
+                except Exception:
+                    pass
+        super().do_GET()
 
     def end_headers(self):
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')

@@ -372,11 +372,17 @@ class LexiGuardApp {
     try {
       this.analysis = await aiService.analyzeDocument(this.documentText);
       
+      // Always render primary active view (Tab 1: Risk Overview + Clause Lens)
       renderRiskOverview(document.getElementById('risk-overview-container'), this.analysis);
       renderClauseLens(document.getElementById('clause-lens-container'), this.documentText, this.analysis.clauses);
-      renderContractComparator(document.getElementById('comparator-container'));
-      renderQACopilot(document.getElementById('copilot-container'), this.documentText);
-      renderActionCenter(document.getElementById('action-container'), this.documentTitle, this.analysis);
+      
+      // Reset background tabs cache so they update cleanly upon next user visit
+      this._renderedTabs = new Set(['analysis']);
+
+      // If user is currently on a non-analysis tab, render it immediately
+      if (this.activeTab !== 'analysis') {
+        this.renderTabContent(this.activeTab);
+      }
 
       announceA11y(`Contract analysis complete. Risk score: ${this.analysis.riskScore} out of 100, ${this.analysis.riskCategory}.`);
     } catch (err) {
@@ -384,6 +390,19 @@ class LexiGuardApp {
       showToast('Error analyzing document. Check console for details.', 'error', 3500);
     } finally {
       this.isAnalyzing = false;
+    }
+  }
+
+  renderTabContent(tabId) {
+    if (tabId === 'comparator' && !this._renderedTabs.has('comparator')) {
+      renderContractComparator(document.getElementById('comparator-container'));
+      this._renderedTabs.add('comparator');
+    } else if (tabId === 'copilot' && !this._renderedTabs.has('copilot')) {
+      renderQACopilot(document.getElementById('copilot-container'), this.documentText);
+      this._renderedTabs.add('copilot');
+    } else if (tabId === 'action' && !this._renderedTabs.has('action')) {
+      renderActionCenter(document.getElementById('action-container'), this.documentTitle, this.analysis);
+      this._renderedTabs.add('action');
     }
   }
 
@@ -404,6 +423,9 @@ class LexiGuardApp {
     document.querySelectorAll('.view-section').forEach((sec) => {
       sec.classList.toggle('active', sec.id === `tab-${tabId}`);
     });
+
+    // Lazy load tab contents if not already rendered
+    this.renderTabContent(tabId);
 
     announceA11y(`Switched to ${activeLabel} view`);
   }

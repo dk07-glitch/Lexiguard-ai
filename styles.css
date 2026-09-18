@@ -885,6 +885,8 @@ body {
   background: rgba(0, 0, 0, 0.14);
   content-visibility: auto;
   contain-intrinsic-size: 0 500px;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Highlighted Text Spans */
@@ -941,6 +943,8 @@ body {
   gap: 0.85rem;
   content-visibility: auto;
   contain-intrinsic-size: 0 400px;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
 }
 
 .clause-card {
@@ -952,6 +956,9 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 140px;
+  contain: layout style;
 }
 
 .clause-card:hover {
@@ -1031,6 +1038,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-bubble {

@@ -7,7 +7,7 @@
 import fs from 'fs';
 import { escapeHtml, clamp, debounce, safeStorage, announceA11y, trapFocus, sanitizeFileName, validateFileUpload, maskApiKey } from '../js/utils.js';
 import { piiService, PIIMasker, isValidLuhn } from '../js/services/piiMasker.js';
-import { aiService } from '../js/services/aiEngine.js';
+import { aiService, fastHash } from '../js/services/aiEngine.js';
 import { exporter } from '../js/services/exporter.js';
 import { appStore } from '../js/store.js';
 import { SAMPLE_DOCUMENTS } from '../js/data/samples.js';
@@ -348,6 +348,38 @@ for (let i = 0; i < 60; i++) {
 }
 assert(aiService._analysisCache.size <= 50, `LRU cache size bounded within max capacity (${aiService._analysisCache.size} <= 50)`);
 
+// Test FNV-1a Microsecond Hash Performance & Determinism
+const hashDoc = benchmarkDoc.repeat(50);
+const hashT0 = performance.now();
+const h1 = fastHash(hashDoc);
+const h2 = fastHash(hashDoc);
+const hashTimeMs = performance.now() - hashT0;
+assertEquals(h1, h2, 'fastHash produces deterministic output for identical input');
+assert(h1 !== '0', 'fastHash produces non-trivial base-36 hash string');
+assert(hashTimeMs < 2.0, `Microsecond FNV-1a hash calculation (${hashTimeMs.toFixed(3)}ms < 2.0ms)`);
+
+// Test Comparator Memoization Cache Hit (< 2ms)
+const memoStart = performance.now();
+const memoDiff = aiService.compareDocuments(largeDocA, largeDocB);
+const memoTimeMs = performance.now() - memoStart;
+assertEquals(memoDiff.addedCount, 1, 'Memoized comparator diff preserves identical result');
+assert(memoTimeMs < 2.0, `Sub-millisecond comparator memoization hit (${memoTimeMs.toFixed(3)}ms < 2.0ms)`);
+
+// Test Single-Pass Regex Token Unmasking with 20 distinct entities
+const dummyMap = new Map();
+let maskedText = "Agreement between ";
+for (let k = 0; k < 20; k++) {
+  const token = `[ENTITY_${k}]`;
+  const original = `EntityValue_${k}`;
+  dummyMap.set(token, original);
+  maskedText += `${token} and `;
+}
+const unmaskStart = performance.now();
+const unmaskedResult = piiService.unmask(maskedText, dummyMap);
+const unmaskTimeMs = performance.now() - unmaskStart;
+assert(!unmaskedResult.includes('[ENTITY_'), 'Single-pass unmasking replaced all 20 tokens cleanly');
+assert(unmaskTimeMs < 3.0, `High-speed single-pass regex unmasking (${unmaskTimeMs.toFixed(3)}ms < 3.0ms)`);
+
 // ------------------------------------------------------------------
 // SUITE 11: Comprehensive Accessibility Verification (WCAG 2.1 AA/AAA)
 // ------------------------------------------------------------------
@@ -497,12 +529,15 @@ assert(serverPy.includes("X-Content-Type-Options', 'nosniff'"), 'server.py enfor
 assert(serverPy.includes("Referrer-Policy', 'strict-origin-when-cross-origin'"), 'server.py enforces strict referrer policy');
 assert(serverPy.includes("Permissions-Policy"), 'server.py disables unneeded browser APIs via Permissions-Policy');
 assert(serverPy.includes("Cross-Origin-Opener-Policy', 'same-origin'"), 'server.py enforces Cross-Origin-Opener-Policy: same-origin');
+assert(serverPy.includes('gzip.compress'), 'server.py implements transparent gzip response compression');
+assert(serverPy.includes("Content-Encoding', 'gzip'"), 'server.py sets Content-Encoding: gzip header');
 
-// 12. Static Hosting CSP Meta Tags in index.html
+// 12. Static Hosting CSP Meta Tags & Module Preloading in index.html
 const indexHtmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
 assert(indexHtmlContent.includes('http-equiv="Content-Security-Policy"'), 'index.html includes static CSP meta tag');
 assert(indexHtmlContent.includes('http-equiv="X-Content-Type-Options"'), 'index.html includes X-Content-Type-Options meta tag');
 assert(indexHtmlContent.includes('name="referrer"'), 'index.html includes Referrer-Policy meta tag');
+assert(indexHtmlContent.includes('rel="modulepreload"'), 'index.html preloads critical ES modules for zero waterfall latency');
 
 // 13. Reverse-Tabnabbing Protection in Exporter
 const exporterJs = fs.readFileSync(new URL('../js/services/exporter.js', import.meta.url), 'utf-8');

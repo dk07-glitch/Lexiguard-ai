@@ -13,29 +13,50 @@ import { safeStorage } from '../utils.js';
  * @property {Object.<string, string>} map - Reversible token-to-original map
  */
 
+// Precomputed lookup table for Luhn algorithm: (digit * 2 > 9 ? digit * 2 - 9 : digit * 2)
+const LUHN_DOUBLE = [0, 2, 4, 6, 8, 1, 3, 5, 7, 9];
+
 /**
  * Validates a credit/debit card number using the ISO/IEC 7812 Luhn checksum algorithm.
+ * High-performance implementation using precomputed double table and char code arithmetic.
  * @param {string} numberStr - Numeric string or hyphen/space separated digits
  * @returns {boolean} True if passes Luhn validation
  */
 export function isValidLuhn(numberStr) {
   if (typeof numberStr !== 'string') return false;
   const digits = numberStr.replace(/\D/g, '');
-  if (digits.length < 13 || digits.length > 19) return false;
+  const len = digits.length;
+  if (len < 13 || len > 19) return false;
   let sum = 0;
   let shouldDouble = false;
-  for (let i = digits.length - 1; i >= 0; i--) {
-    let digit = parseInt(digits.charAt(i), 10);
-    if (isNaN(digit)) return false;
-    if (shouldDouble) {
-      digit *= 2;
-      if (digit > 9) digit -= 9;
-    }
-    sum += digit;
+  for (let i = len - 1; i >= 0; i--) {
+    const digit = digits.charCodeAt(i) - 48;
+    if (digit < 0 || digit > 9) return false;
+    sum += shouldDouble ? LUHN_DOUBLE[digit] : digit;
     shouldDouble = !shouldDouble;
   }
   return sum % 10 === 0;
 }
+
+// Pre-compiled static regular expressions to eliminate re-compilation in hot paths
+const REGEX_JWT = /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g;
+const REGEX_BEARER = /Bearer\s+([A-Za-z0-9_\-\.]{20,})/gi;
+const REGEX_AWS = /\bAKIA[0-9A-Z]{16}\b/g;
+const REGEX_GITHUB = /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/g;
+const REGEX_GOOGLE_KEY = /\bAIzaSy[A-Za-z0-9_-]{33}\b/g;
+const REGEX_GENERIC_KEY = /(?:api[_-]?key|secret|token)\s*[:=]\s*['"]?([a-zA-Z0-9_\-\.]{16,})['"]?/gi;
+const REGEX_IBAN = /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g;
+const REGEX_CARDS = /\b(?:\d{4}[-\s]?){3}\d{1,7}\b|\b\d{13,19}\b/g;
+const REGEX_SSN = /\b\d{3}[-.\s]\d{2}[-.\s]\d{4}\b/g;
+const REGEX_PASSPORT = /(?:Passport\s*(?:No|Number|#)?[:\s]*)([A-Z0-9]{7,10})\b/gi;
+const REGEX_DOB = /(?:DOB|Date of Birth|Birth Date)[:\s]+(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/gi;
+const REGEX_IPV4 = /\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g;
+const REGEX_EMAIL = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const REGEX_PHONE = /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
+const REGEX_MONETARY = /(?:\$|€|£|USD|EUR|GBP)\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/gi;
+const REGEX_ADDRESS = /\d{1,5}\s+[A-Za-z0-9\s.,]+(?:Apt|Suite|Unit|Building|Floor|Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Way|Lane|Ln|Court|Ct)\b[A-Za-z0-9\s.,\d]{0,50}/gi;
+const REGEX_NAME_1 = /\b(?:Landlord|Tenant|Employee|Employer|Party A|Party B|Client|Contractor):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g;
+const REGEX_NAME_2 = /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+\("(?:Landlord|Tenant|Employee|Employer|Contractor)"\)/g;
 
 export class PIIMasker {
   constructor() {
@@ -75,34 +96,28 @@ export class PIIMasker {
     try {
       // 1. Secrets, API Keys, Bearer Tokens, and JWTs
       if (this.categories.secrets) {
-        // JWT tokens (eyJ...)
-        sanitized = sanitized.replace(/\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_JWT, (match) =>
           registerToken('SECRET_KEY', match)
         );
 
-        // Bearer tokens in headers or code
-        sanitized = sanitized.replace(/Bearer\s+([A-Za-z0-9_\-\.]{20,})/gi, (match, tokenVal) => {
+        sanitized = sanitized.replace(REGEX_BEARER, (match, tokenVal) => {
           const token = registerToken('SECRET_KEY', tokenVal);
           return `Bearer ${token}`;
         });
 
-        // AWS Access Keys (AKIA...)
-        sanitized = sanitized.replace(/\bAKIA[0-9A-Z]{16}\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_AWS, (match) =>
           registerToken('SECRET_KEY', match)
         );
 
-        // GitHub personal tokens (ghp_...)
-        sanitized = sanitized.replace(/\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_GITHUB, (match) =>
           registerToken('SECRET_KEY', match)
         );
 
-        // Google API Keys (AIzaSy...)
-        sanitized = sanitized.replace(/\bAIzaSy[A-Za-z0-9_-]{33}\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_GOOGLE_KEY, (match) =>
           registerToken('SECRET_KEY', match)
         );
 
-        // Generic API Key / Secret assignments
-        sanitized = sanitized.replace(/(?:api[_-]?key|secret|token)\s*[:=]\s*['"]?([a-zA-Z0-9_\-\.]{16,})['"]?/gi, (match, secretVal) => {
+        sanitized = sanitized.replace(REGEX_GENERIC_KEY, (match, secretVal) => {
           const token = registerToken('SECRET_KEY', secretVal);
           return match.replace(secretVal, token);
         });
@@ -110,13 +125,11 @@ export class PIIMasker {
 
       // 2. Financial Accounts: Credit/Debit Cards (with Luhn check) & IBANs
       if (this.categories.financial) {
-        // International Bank Account Numbers (IBAN)
-        sanitized = sanitized.replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_IBAN, (match) =>
           registerToken('BANK_ACCOUNT', match)
         );
 
-        // Payment Cards: 13 to 19 digits formatted or raw, validated via Luhn algorithm
-        sanitized = sanitized.replace(/\b(?:\d{4}[-\s]?){3}\d{1,7}\b|\b\d{13,19}\b/g, (match) => {
+        sanitized = sanitized.replace(REGEX_CARDS, (match) => {
           if (isValidLuhn(match)) {
             return registerToken('PAYMENT_CARD', match);
           }
@@ -126,18 +139,16 @@ export class PIIMasker {
 
       // 3. Social Security & National Tax Identifiers (SSN: XXX-XX-XXXX)
       if (this.categories.identifiers) {
-        sanitized = sanitized.replace(/\b\d{3}[-.\s]\d{2}[-.\s]\d{4}\b/g, (match) => 
+        sanitized = sanitized.replace(REGEX_SSN, (match) => 
           registerToken('NATIONAL_ID', match)
         );
 
-        // Passport Numbers (explicit label or standard format)
-        sanitized = sanitized.replace(/(?:Passport\s*(?:No|Number|#)?[:\s]*)([A-Z0-9]{7,10})\b/gi, (match, passVal) => {
+        sanitized = sanitized.replace(REGEX_PASSPORT, (match, passVal) => {
           const token = registerToken('PASSPORT', passVal);
           return match.replace(passVal, token);
         });
 
-        // Date of Birth (DOB)
-        sanitized = sanitized.replace(/(?:DOB|Date of Birth|Birth Date)[:\s]+(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/gi, (match, dobVal) => {
+        sanitized = sanitized.replace(REGEX_DOB, (match, dobVal) => {
           const token = registerToken('DOB', dobVal);
           return match.replace(dobVal, token);
         });
@@ -145,50 +156,46 @@ export class PIIMasker {
 
       // 4. IP Addresses (IPv4 and IPv6)
       if (this.categories.identifiers) {
-        // IPv4 Address
-        sanitized = sanitized.replace(/\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_IPV4, (match) =>
           registerToken('IP_ADDRESS', match)
         );
       }
 
-      // 5. Email Addresses
+      // 5. Email Addresses & Phone Numbers
       if (this.categories.contacts) {
-        sanitized = sanitized.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, (match) =>
+        sanitized = sanitized.replace(REGEX_EMAIL, (match) =>
           registerToken('EMAIL', match)
         );
 
-        // Phone Numbers (Standard, International, and Bracketed formats)
-        sanitized = sanitized.replace(/\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, (match) =>
+        sanitized = sanitized.replace(REGEX_PHONE, (match) =>
           registerToken('PHONE', match)
         );
       }
 
       // 6. Monetary Amounts ($3,400.00, €50,000, £100,000, USD 20,000)
       if (this.categories.amounts) {
-        sanitized = sanitized.replace(/(?:\$|€|£|USD|EUR|GBP)\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/gi, (match) =>
+        sanitized = sanitized.replace(REGEX_MONETARY, (match) =>
           registerToken('FINANCIAL_VAL', match)
         );
       }
 
       // 7. Physical Street Addresses & Suite/Apt Identifiers
       if (this.categories.addresses) {
-        sanitized = sanitized.replace(/\d{1,5}\s+[A-Za-z0-9\s.,]+(?:Apt|Suite|Unit|Building|Floor|Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Way|Lane|Ln|Court|Ct)\b[A-Za-z0-9\s.,\d]{0,50}/gi, (match) =>
+        sanitized = sanitized.replace(REGEX_ADDRESS, (match) =>
           registerToken('ADDRESS', match)
         );
       }
 
       // 8. Named Parties & Entities (Common Contract Signature Header Patterns)
       if (this.categories.names) {
-        const namePatterns = [
-          /\b(?:Landlord|Tenant|Employee|Employer|Party A|Party B|Client|Contractor):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g,
-          /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+\("(?:Landlord|Tenant|Employee|Employer|Contractor)"\)/g
-        ];
+        sanitized = sanitized.replace(REGEX_NAME_1, (match, nameGroup) => {
+          const token = registerToken('PARTY_NAME', nameGroup);
+          return match.replace(nameGroup, token);
+        });
 
-        namePatterns.forEach((pattern) => {
-          sanitized = sanitized.replace(pattern, (match, nameGroup) => {
-            const token = registerToken('PARTY_NAME', nameGroup);
-            return match.replace(nameGroup, token);
-          });
+        sanitized = sanitized.replace(REGEX_NAME_2, (match, nameGroup) => {
+          const token = registerToken('PARTY_NAME', nameGroup);
+          return match.replace(nameGroup, token);
         });
       }
     } catch (err) {
@@ -203,18 +210,21 @@ export class PIIMasker {
   }
 
   /**
-   * Reconstructs sanitized text using the token map.
+   * Reconstructs sanitized text using the token map in a single high-performance O(N) pass.
+   * Compiles alternating token patterns to prevent multi-pass string reallocation.
    * @param {string} sanitizedText - Text containing anonymized tokens
    * @param {Object.<string, string>} map - Token to original value dictionary
    * @returns {string} Restored text
    */
   unmask(sanitizedText, map) {
     if (!sanitizedText || !map) return sanitizedText || '';
-    let restored = sanitizedText;
-    for (const [token, original] of Object.entries(map)) {
-      restored = restored.replaceAll(token, original);
-    }
-    return restored;
+    const isMap = map instanceof Map;
+    const tokens = isMap ? Array.from(map.keys()) : Object.keys(map);
+    if (tokens.length === 0) return sanitizedText;
+
+    // Fast single-pass regex compilation with escaped brackets
+    const pattern = new RegExp(tokens.map((t) => t.replace(/[[\]]/g, '\\$&')).join('|'), 'g');
+    return sanitizedText.replace(pattern, (matchedToken) => (isMap ? map.get(matchedToken) : map[matchedToken]) ?? matchedToken);
   }
 
   /**
