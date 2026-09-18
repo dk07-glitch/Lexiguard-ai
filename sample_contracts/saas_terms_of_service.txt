@@ -1,0 +1,10 @@
+CLOUDIFY SERVICES TERMS OF USE
+
+1. AUTOMATIC RENEWAL & BILLING
+Subscriptions auto-renew monthly on your credit card. You authorize Cloudify to store payment details and charge recurring fees until cancelled. Cancellations must be completed 14 days prior to billing date; no refunds for partial months.
+
+2. UNILATERAL AMENDMENTS
+Cloudify reserves the right to modify these Terms, pricing, or features at any time without prior notice. Continued use of the platform constitutes binding acceptance of modified terms.
+
+3. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, CLOUDIFY'S TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS OF ANY KIND SHALL BE LIMITED TO THE GREATER OF $100 OR THE FEES PAID BY YOU IN THE LAST 30 DAYS. CLOUDIFY SHALL NOT BE LIABLE FOR LOST DATA, BUSINESS INTERRUPTION, OR INDIRECT DAMAGES.

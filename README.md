@@ -119,9 +119,34 @@ lexiguard-ai/
 ├── .gitignore                   # Standard Git Ignore configuration
 ├── index.html                   # Core HTML5 Frame
 ├── README.md                    # Project Documentation & Architecture
+├── sample_contracts/            # Ready-to-use sample files for upload testing
+│   ├── executive_employment_agreement.txt
+│   ├── freelance_service_agreement.md
+│   ├── mutual_nda.txt
+│   ├── README.md
+│   ├── residential_lease.txt
+│   └── saas_terms_of_service.txt
 ├── server.py                    # Zero-dependency Python Local Web Server
 └── styles.css                   # Cyber-Legal Glassmorphic Design System
 ```
+
+---
+
+## 📥 Demo Contracts & Upload Formats
+
+Users, judges, and evaluators can test the **"Upload File"** feature using the pre-formatted contracts in [`sample_contracts/`](./sample_contracts/):
+
+| Contract | Format | Key Legal Traps Tested |
+|:---|:---:|:---|
+| [`residential_lease.txt`](./sample_contracts/residential_lease.txt) | `.txt` | Deposit forfeiture, 90-day renewal notice, repair fees |
+| [`executive_employment_agreement.txt`](./sample_contracts/executive_employment_agreement.txt) | `.txt` | 2-year non-compete, personal IP seizure, arbitration |
+| [`freelance_service_agreement.md`](./sample_contracts/freelance_service_agreement.md) | `.md` | Conditional IP transfer, 1.5% late payment fees |
+| [`saas_terms_of_service.txt`](./sample_contracts/saas_terms_of_service.txt) | `.txt` | Unilateral ToS modification, $100 total liability limit |
+| [`mutual_nda.txt`](./sample_contracts/mutual_nda.txt) | `.txt` | Fair balanced terms, standard public domain exclusions |
+
+- **Accepted Upload Formats**: `.txt`, `.md`, `.doc`, `.docx`, `.json`
+- **Max File Size**: 2 MB
+- **Client-Side Sanitization**: Automatic PII redaction, RTLO spoofing defense, and Windows device name neutralization.
 
 ---
 

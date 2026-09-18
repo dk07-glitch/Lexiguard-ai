@@ -127,11 +127,12 @@ class LexiGuardApp {
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
                 <label for="doc-title-input" class="sr-only">Contract Title</label>
                 <input id="doc-title-input" type="text" class="chat-input" style="font-weight:700; font-size:0.98rem; flex:1;" value="${escapeHtml(this.documentTitle)}" placeholder="Contract Title..." aria-label="Contract Title" />
-                <div style="display:flex; gap:0.4rem;">
-                  <label for="file-upload-input" class="btn btn-secondary btn-sm" style="cursor:pointer;" title="Upload contract file (.txt, .md, .doc)" tabindex="0" role="button" aria-label="Upload contract file">
+                <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                  <span class="upload-formats-hint" style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono); padding:0.25rem 0.5rem; background:rgba(255,255,255,0.04); border:1px solid var(--border-color); border-radius:var(--radius-sm);" title="Supported upload formats: .txt, .md, .doc, .docx, .json (max 2MB)">.txt, .md, .docx, .json &le; 2MB</span>
+                  <label for="file-upload-input" class="btn btn-secondary btn-sm" style="cursor:pointer;" title="Upload contract file (.txt, .md, .docx, .json - max 2MB)" tabindex="0" role="button" aria-label="Upload contract file">
                     <i data-lucide="upload" style="width:14px; height:14px;" aria-hidden="true"></i>
                     <span>Upload File</span>
-                    <input id="file-upload-input" type="file" accept=".txt,.md,.doc,.docx" style="display:none;" aria-label="Upload contract file dialog" />
+                    <input id="file-upload-input" type="file" accept=".txt,.md,.doc,.docx,.json" style="display:none;" aria-label="Upload contract file dialog" />
                   </label>
                   <button id="btn-reanalyze" type="button" class="btn btn-primary btn-sm" title="Re-evaluate with AI (Ctrl+Enter)" aria-label="Re-analyze contract with AI">
                     <i data-lucide="sparkles" style="width:14px; height:14px;" aria-hidden="true"></i>

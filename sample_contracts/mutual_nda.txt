@@ -1,0 +1,17 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+PARTIES:
+Party A: Alpha Ventures Inc.
+Party B: Beta Labs LLC
+
+1. PURPOSE & CONFIDENTIAL INFORMATION
+The parties intend to disclose confidential information solely for evaluating a potential commercial partnership ("Purpose"). Confidential Information includes trade secrets, technical data, financial figures, customer lists, and software code marked "Confidential".
+
+2. OBLIGATIONS OF CONFIDENTIALITY
+Each Receiving Party agrees to maintain the Confidential Information in strict confidence using at least reasonable care, and shall not disclose it to third parties except to employees and advisors with a need to know.
+
+3. EXCLUSIONS
+Confidential Information does not include information that: (a) is or becomes publicly known through no breach; (b) was already known prior to disclosure; (c) is independently developed without reference to Confidential Information; or (d) is disclosed pursuant to valid court order.
+
+4. TERM & RETURN
+This Agreement remains in effect for three (3) years from the Effective Date. Upon written request, Receiving Party shall return or destroy all materials containing Confidential Information within 30 days.

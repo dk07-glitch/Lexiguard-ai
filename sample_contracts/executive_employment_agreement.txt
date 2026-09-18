@@ -1,0 +1,18 @@
+EMPLOYMENT & PROPRIETARY RIGHTS AGREEMENT
+
+PARTIES:
+Employer: Nexus CyberTech Inc. ("Company")
+Employee: Jane Smith ("Employee")
+Position: Senior Software Architect
+
+1. INTELLECTUAL PROPERTY ASSIGNMENT
+Employee agrees that ALL inventions, code, designs, documentation, and ideas created, conceived, or reduced to practice by Employee during the term of employment—WHETHER OR NOT created during working hours, on Company equipment, or related to Company's business—shall be the sole and exclusive property of Company.
+
+2. NON-COMPETITION RESTRICTION
+For a period of TWO (2) YEARS following the termination of employment for ANY reason, Employee shall not directly or indirectly engage in, perform services for, consult with, or hold financial interest in any business entity competing with Company anywhere within the UNITED STATES.
+
+3. NON-SOLICITATION
+For two (2) years post-employment, Employee shall not solicit, recruit, or hire any employee, contractor, or customer of Company. Breach of this section triggers liquidated damages of $100,000 per violation.
+
+4. MANDATORY BINDING ARBITRATION
+Any dispute, claim, or controversy arising out of or relating to this Agreement or employment shall be settled exclusively by confidential binding arbitration in Delaware. Employee WAIVES ALL RIGHTS TO A TRIAL BY JURY or participation in class actions.
